@@ -2,3 +2,6 @@ scikit-learn
 pandas
 seaborn
 nltk
+jupyter
+matplotlib
+
