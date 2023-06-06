@@ -40,6 +40,7 @@ def impute_train_whole(df, target_col_nm, token, chained):
 
     imputer = datawig.SimpleImputer(input_columns=input_columns,
                                     output_column=target_col_nm,
+                                    tokens=token,
                                     output_path=f'{BASEDIR}/imputer/{token}/{chained}/{target_col_nm}'
                                     )
 
