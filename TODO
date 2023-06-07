@@ -1,0 +1,15 @@
+1. Predictor model 정하기: Random Forest, XGBoost, CatBoost, SVM, Logistic Regression, KNN ...?
+2. predictor model을 가지고 data-imputation 성능 확인. Imputation을 한 데이터와 안한 데이터 간 비교.
+   이때, 안 한 데이터는 nan 값을 모두 None으로 처리하고 진행.
+3. 2번 결과에서 성능이 제일 잘 나오는 데이터셋을 기반으로, 찾아둔 rule set을 추가하여 예측. 
+   이때 rule set을 추가하는 방법은 각 룰에 부합하는지에 따른 boolean feature를 새로 추가하는 것으로 진행
+4. 각 model 별로 Undersampling, oversampling, smote 등으로 데이터를 조정해보기
+5. 분석한 노트북 전부 하나의 노트북으로 취합 필요
+
+
+발표 자료용:
+1. Rule set 정리 필요
+2. Data Imputation 관련한 자료 정리 필요 (DataWig)
+3. Scoring measure precision vs recall vs f1 score vs accuracy 중에 뭐 할지
+
+
