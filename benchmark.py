@@ -120,8 +120,13 @@ class Benchmark:
                 search.fit(X, y)
                 
                 if self.save_cv_result:
-                    self.save_json(search.cv_results_ , f'{self.base_path}/cv_results/{nm}.json')
-                
+                    cv_result = search.cv_results_
+                    
+                    if not Path(f'{self.base_path}/cv_result/').exists():
+                        Path(f'{self.base_path}/cv_result/').mkdir(parents=True)
+                        
+                    pd.DataFrame.from_dict(cv_result).to_csv(f'{self.base_path}/cv_result/{nm}.csv', index=False)
+                        
                 self.best_params[nm] = search.best_params_
                 
                 self.logger.info(f'Finished searching best params for {nm}.')
