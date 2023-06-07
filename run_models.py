@@ -5,6 +5,8 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_validate, StratifiedKFold
+from sklearn.exceptions import FitFailedWarning
+
 from xgboost import XGBClassifier
 
 import json
@@ -46,7 +48,12 @@ class Benchmark:
         X = self.data.drop(self.label_nm, axis=1)
         cv = StratifiedKFold(n_splits=self.cv, shuffle=True, random_state=self.seed)
         
-        cv_scores = cross_validate(model(), X, y, cv=cv, scoring=self.scoring, fit_params=kwargs)
+        try:
+            cv_scores = cross_validate(model(**kwargs), X, y, cv=cv, scoring=self.scoring)
+            
+        except FitFailedWarning as e:
+            self.logger.error(f'FitFailedWarning: {e}')
+            raise Exception(f'FitFailedWarning: {e}')
         
         return cv_scores
     
@@ -111,8 +118,8 @@ if __name__ == '__main__':
     
     np.random.seed(42)
     
-    data = pd.DataFrame(np.random.randint(0, 100, size=(100, 4)), columns=list('ABCD'))
-    data['fradulent'] = np.random.randint(0, 2, size=(100, 1))
+    data = pd.DataFrame(np.random.randint(0, 1000, size=(1000, 4)), columns=list('ABCD'))
+    data['fradulent'] = np.random.randint(0, 2, size=(1000, 1))
     
     benchmark = Benchmark(data, logging_nm='debug')
     
