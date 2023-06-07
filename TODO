@@ -5,11 +5,9 @@
    이때 rule set을 추가하는 방법은 각 룰에 부합하는지에 따른 boolean feature를 새로 추가하는 것으로 진행
 4. 각 model 별로 Undersampling, oversampling, smote 등으로 데이터를 조정해보기
 5. 분석한 노트북 전부 하나의 노트북으로 취합 필요
-
+6. 피쳐 재가공 얘기 + mode로 imputation
 
 발표 자료용:
 1. Rule set 정리 필요
 2. Data Imputation 관련한 자료 정리 필요 (DataWig)
 3. Scoring measure precision vs recall vs f1 score vs accuracy 중에 뭐 할지
-
-
