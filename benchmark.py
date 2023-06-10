@@ -61,6 +61,7 @@ class Benchmark:
         self.best_params = {}
         # if current os is windows, set n_jobs to 1 else -1
         self.n_jobs = 1 if os.name == 'nt' else -1
+        self.use_gpu = self._test_xgb_finds_gpu()
     
     def _run_cv(self, model, **kwargs):
         y = self.data[self.label_nm]
@@ -96,6 +97,20 @@ class Benchmark:
             
         return data
     
+    def _test_xgb_finds_gpu(capsys):
+        """Check if XGBoost finds the GPU."""
+        X = np.random.rand(2, 4)
+        y = np.random.randint(0, 1, 2)
+
+        try:
+            xgb_model = XGBClassifier(
+                tree_method="gpu_hist"
+            )
+            xgb_model.fit(X, y)
+            return True
+        except:
+            return False
+    
     def _search_best_params(self, param_range, skip_param_search, **kwargs):
         model_param_range = self._get_param_ranges(param_range, skip_param_search)
         BEST_PARMAS_PATH = f'{self.base_path}/{self._score_of_interest}/best_params.json'
@@ -111,6 +126,9 @@ class Benchmark:
             if nm in self.best_params.keys():
                 self.logger.info(f'{nm} already has best params. Skip searching best params.')
                 continue
+            
+            if nm == 'xgb' and self.use_gpu:
+                param_range['tree_method'] = ['gpu_hist']
             
             # check if random state attribute exists in the model class
             if 'random_state' in self.model_tables[nm]().get_params().keys():
