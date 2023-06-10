@@ -7,56 +7,71 @@
                     'ada': AdaBoostClassifier,
                     'gb': GradientBoostingClassifier,
                     'et': ExtraTreesClassifier,
-                    'xgb': XGBClassifier
+                    'xgb': XGBClassifier,
+                    'cb: CatBoostClassifier
                     }
 """
+N_ESTIAMTORS =  [100, 500, 1000]
+LR = [0.001, 0.01, 0.1]
+MAX_DEPTH = [6, 9, 15, 20, 30]
+MIN_SAMPLES_SPLIT = [2, 5, 10, 15]
+MIN_SAMPLES_LEAF = [2, 5, 10, 15]
 
 params = {
-    'rf': {'n_estimators': [30, 50, 100, 200],
-              'max_depth': [3, 5, 7, 9],
-                'min_samples_split': [2, 4, 6, 8, 10],
-                'min_samples_leaf': [2, 3, 4, 5],
+    'rf': {'n_estimators': N_ESTIAMTORS,
+              'max_depth': MAX_DEPTH,
+                'min_samples_split': MIN_SAMPLES_SPLIT,
+                'min_samples_leaf': MIN_SAMPLES_LEAF,
                 'criterion': ['gini', 'entropy']
                 },
     
-    'lr': {'penalty': ['l1', 'l2', 'elasticnet', 'none'],
-                'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
-                'solver': ['lbfgs'],
+    'lr': {'penalty': ['l1', 'l2', 'elasticnet', None],
+                'C': [0.001,  0.1, 1, 10, 100],
+                'solver': ['newton-cholesky'],
+                'max_iter': [50000]
     },
     
-    'svm': {'C': [0.001, 0.01, 0.1, 1, 10, 100, 1000],
+    'svm': {'C': [0.001, 0.01, 0.1, 1, 10, 50, 100],
                 'kernel': ['rbf'],
                 
     },
     
-    'knn': {'n_neighbors': [3, 5, 7, 9],
+    'knn': {'n_neighbors': [15, 17, 20, 25, 30],
     },
     
-    'ada': {'n_estimators': [30, 50, 100, 200],
-                'learning_rate': [0.001, 0.01, 0.1]
+    'ada': {'n_estimators': N_ESTIAMTORS,
+                'learning_rate': LR
     },
     
-    'gb': {'n_estimators': [30, 50, 100, 200],
-                'learning_rate': [0.001, 0.01, 0.1],
-                'max_depth': [3, 5, 7, 9],
-                'min_samples_split': [2, 4, 6, 8, 10],
-                'min_samples_leaf': [2, 3, 4, 5],
+    'gb': {'n_estimators': N_ESTIAMTORS,
+                'learning_rate': LR,
+                'max_depth': MAX_DEPTH,
+                'min_samples_split': MIN_SAMPLES_SPLIT,
+                'min_samples_leaf': MIN_SAMPLES_LEAF,
     },
     
-    'et': {'n_estimators': [30, 50, 100, 200],
-                'max_depth': [3, 5, 7, 9],
-                'min_samples_split': [2, 4, 6, 8, 10],
-                'min_samples_leaf': [2, 3, 4, 5],
+    'et': {'n_estimators': N_ESTIAMTORS,
+                'max_depth': MAX_DEPTH,
+                'min_samples_split': MIN_SAMPLES_SPLIT,
+                'min_samples_leaf': MIN_SAMPLES_LEAF,
                 
     },
     
-    'xgb': {'n_estimators': [30, 50, 100, 200],
-                'learning_rate': [0.001, 0.01, 0.1],
-                'max_depth': [3, 5, 7, 9],
-                'min_samples_split': [2, 4, 6, 8, 10],
-                'min_samples_leaf': [2, 3, 4, 5],
+    'xgb': {'n_estimators': N_ESTIAMTORS,
+                'learning_rate': LR,
+                'max_depth': MAX_DEPTH,
+                'min_samples_split': MIN_SAMPLES_SPLIT,
+                'min_samples_leaf': MIN_SAMPLES_LEAF,
                 
-    }            
+    },
+    
+    'cb': {'n_estimators': N_ESTIAMTORS,
+                   'learning_rate': LR,
+                    'max_depth': MAX_DEPTH,
+                    'min_samples_split': MIN_SAMPLES_SPLIT,
+                    'min_samples_leaf': MIN_SAMPLES_LEAF,
+                    
+        }        
     
 }
 

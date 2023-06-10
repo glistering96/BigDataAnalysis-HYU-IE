@@ -1,0 +1,41 @@
+{
+    "rf": {
+        "params": {
+            "criterion": "entropy",
+            "max_depth": 20,
+            "min_samples_leaf": 2,
+            "min_samples_split": 6,
+            "n_estimators": 500
+        },
+        "score": 0.9436862537943134
+    },
+    "lr": {
+        "params": {
+            "C": 1,
+            "max_iter": 50000,
+            "penalty": "l2",
+            "solver": "newton-cholesky"
+        },
+        "score": 0.8985204993216491
+    },
+    "svm": {
+        "params": {
+            "C": 10,
+            "kernel": "rbf"
+        },
+        "score": 0.9380102220674182
+    },
+    "knn": {
+        "params": {
+            "n_neighbors": 30
+        },
+        "score": 0.9198419024345531
+    },
+    "ada": {
+        "params": {
+            "learning_rate": 0.1,
+            "n_estimators": 1000
+        },
+        "score": 0.892422320148089
+    }
+}

@@ -12,12 +12,18 @@ from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import HalvingGridSearchCV
 
 from xgboost import XGBClassifier
+from catboost import CatBoostClassifier
 
 import json
 from pathlib import Path
 from src.common.logger import init_logger
 import os
+import pandas as pd
 
+from sklearn.exceptions import UndefinedMetricWarning
+import warnings
+
+warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
 class Benchmark:
     model_tables = {'rf': RandomForestClassifier, 
@@ -27,7 +33,8 @@ class Benchmark:
                     'ada': AdaBoostClassifier,
                     'gb': GradientBoostingClassifier,
                     'et': ExtraTreesClassifier,
-                    'xgb': XGBClassifier
+                    'xgb': XGBClassifier,
+                    'cb': CatBoostClassifier
                     }
     
     BASEDIR = str(Path(__file__).parent)
@@ -91,45 +98,58 @@ class Benchmark:
     
     def _search_best_params(self, param_range, skip_param_search, **kwargs):
         model_param_range = self._get_param_ranges(param_range, skip_param_search)
+        BEST_PARMAS_PATH = f'{self.base_path}/{self._score_of_interest}/best_params.json'
+        
+        try:
+            self.best_params = self.load_json(BEST_PARMAS_PATH)
+            
+        except FileNotFoundError:
+            self.logger.info(f'{BEST_PARMAS_PATH} does not exist. Start searching best params...')
+            self.best_params = {}
         
         for nm, param_range in model_param_range.items():
-            if skip_param_search:
-                self.best_params[nm] = param_range
+            if nm in self.best_params.keys():
+                self.logger.info(f'{nm} already has best params. Skip searching best params.')
+                continue
+            
+            # check if random state attribute exists in the model class
+            if 'random_state' in self.model_tables[nm]().get_params().keys():
+                model = self.model_tables[nm](random_state=self.seed)
                 
             else:
-                # check if random state attribute exists in the model class
-                if 'random_state' in self.model_tables[nm]().get_params().keys():
-                    model = self.model_tables[nm](random_state=self.seed)
+                model = self.model_tables[nm]()
+                
+            self.logger.info(f'Searching best params for {nm}...')
+            
+            
+            search_n_jobs = 8 if self.n_jobs == -1 else self.n_jobs
+            
+            search = GridSearchCV(
+                model,
+                param_grid=param_range,
+                scoring=self.scoring,
+                cv=self.cv,
+                refit=self._score_of_interest,
+                n_jobs=search_n_jobs,
+            )
+            
+            X, y = self.data.drop(self.label_nm, axis=1), self.data[self.label_nm]
+            
+            search.fit(X, y)
+            
+            if self.save_cv_result:
+                cv_result = search.cv_results_
+                
+                if not Path(f'{self.base_path}/cv_result/{self._score_of_interest}').exists():
+                    Path(f'{self.base_path}/cv_result/{self._score_of_interest}').mkdir(parents=True)
                     
-                else:
-                    model = self.model_tables[nm]()
-                    
-                self.logger.info(f'Searching best params for {nm}...')
-                
-                search = GridSearchCV(
-                    model,
-                    param_grid=param_range,
-                    scoring=self.scoring,
-                    cv=self.cv,
-                    refit=self._score_of_interest,
-                    n_jobs=self.n_jobs,
-                )
-                
-                X, y = self.data.drop(self.label_nm, axis=1), self.data[self.label_nm]
-                
-                search.fit(X, y)
-                
-                if self.save_cv_result:
-                    cv_result = search.cv_results_
-                    
-                    if not Path(f'{self.base_path}/cv_result/').exists():
-                        Path(f'{self.base_path}/cv_result/').mkdir(parents=True)
-                        
-                    pd.DataFrame.from_dict(cv_result).to_csv(f'{self.base_path}/cv_result/{nm}.csv', index=False)
-                        
-                self.best_params[nm] = search.best_params_
-                
-                self.logger.info(f'Finished searching best params for {nm}.')
+                pd.DataFrame.from_dict(cv_result).to_csv(f'{self.base_path}/cv_result/{self._score_of_interest}/{nm}.csv', index=False)
+            
+            self.best_params[nm] = {'params': search.best_params_, 'score': search.best_score_}
+            
+            # save the best params
+            self.save_json(self.best_params, BEST_PARMAS_PATH)
+            self.logger.info(f'Finished searching best params for {nm}.')
 
     def _get_param_ranges(self, param_range_file, skip_param_search=False):
         if not (isinstance(param_range_file, dict) or isinstance(param_range_file, str)):
@@ -154,7 +174,12 @@ class Benchmark:
             for k, parameters in model_param_range.items():
                 for param_nm, v in parameters.items():
                     if not isinstance(v, list):
-                        raise TypeError(f'Parameter ranges for {k} must be a list.')
+                        
+                        if isinstance(v, (int, float, str)):
+                            model_param_range[k][param_nm] = [v]
+                        
+                        else:
+                            raise TypeError(f'Parameter ranges for {k} must be a list.')
                 
         else:
             # if parameter search is skipped, the value of the model_param_range should not be any iterables or containers.
@@ -167,6 +192,9 @@ class Benchmark:
     
     def run(self, param_range: Union[dict, str], skip_param_search=False):
         # models: {model_nm: model_params, ...}
+        
+        import warnings
+        warnings.filterwarnings('ignore', category=UndefinedMetricWarning)
         
         try:
             results = self.load_json(self.result_path)
