@@ -180,20 +180,15 @@ class Benchmark:
                 search_n_jobs = 2
                 
             if nm == 'cb':
-                if self.use_gpu:
-                    param_range['task_type'] = ['GPU']
-                    
                 param_range['max_depth'] = (3, 16)
                 param_range['od_wait'] = [10]                
                 search_n_jobs = 1
-                
+                param_range['iterations'] = [100]       # cat boost take too long to calculate, so we set iterations to 100
                 model.set_params(cat_features=self.cat_cols)
                 
                 # _drop_text = True  # if you want to run the model also with text when using catboost, set drop_text to False
                 _make_dummies = False   # catboost does not need dummies
             
-                                       
-
             self.logger.info(f'Searching best params for {nm} with {search_n_jobs} jobs...')
             
             search = TuneSearchCV(
@@ -207,6 +202,7 @@ class Benchmark:
                 scoring=self.scoring,
                 refit=self._score_of_interest,                
                 cv=self.cv,
+                verbose=2,
                 use_gpu=self.use_gpu                
             )
             
