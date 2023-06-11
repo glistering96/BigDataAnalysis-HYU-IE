@@ -6,57 +6,40 @@
             1000
         ],
         "max_depth": [
-            9,
-            13,
-            15,
-            17,
-            20
+            6,
+            50
         ],
         "min_samples_split": [
             2,
-            6,
-            10
+            30
         ],
         "min_samples_leaf": [
             2,
-            5,
-            10,
-            20
+            30
         ],
         "criterion": [
-            "gini",
             "entropy"
         ]
     },
     "lr": {
         "penalty": [
-            "l1",
             "l2",
-            "elasticnet",
             null
         ],
         "C": [
             0.001,
-            0.1,
-            1,
-            10,
             100
         ],
         "solver": [
             "newton-cholesky"
         ],
         "max_iter": [
-            50000
+            100000
         ]
     },
     "svm": {
         "C": [
             0.001,
-            0.01,
-            0.1,
-            1,
-            10,
-            50,
             100
         ],
         "kernel": [
@@ -65,11 +48,8 @@
     },
     "knn": {
         "n_neighbors": [
-            15,
-            17,
-            20,
-            25,
-            30
+            3,
+            100
         ]
     },
     "ada": {
@@ -80,38 +60,7 @@
         ],
         "learning_rate": [
             0.001,
-            0.01,
-            0.1
-        ]
-    },
-    "gb": {
-        "n_estimators": [
-            100,
-            500,
-            1000
-        ],
-        "learning_rate": [
-            0.001,
-            0.01,
-            0.1
-        ],
-        "max_depth": [
-            9,
-            13,
-            15,
-            17,
-            20
-        ],
-        "min_samples_split": [
-            2,
-            6,
-            10
-        ],
-        "min_samples_leaf": [
-            2,
-            5,
-            10,
-            20
+            0.3
         ]
     },
     "et": {
@@ -121,22 +70,16 @@
             1000
         ],
         "max_depth": [
-            9,
-            13,
-            15,
-            17,
-            20
+            6,
+            50
         ],
         "min_samples_split": [
             2,
-            6,
-            10
+            30
         ],
         "min_samples_leaf": [
             2,
-            5,
-            10,
-            20
+            30
         ]
     },
     "xgb": {
@@ -147,56 +90,56 @@
         ],
         "learning_rate": [
             0.001,
-            0.01,
-            0.1
+            0.3
         ],
         "max_depth": [
-            9,
-            13,
-            15,
-            17,
-            20
-        ],
-        "min_samples_split": [
-            2,
             6,
-            10
+            50
         ],
-        "min_samples_leaf": [
+        "min_child_weight": [
             2,
-            5,
-            10,
-            20
+            30
+        ],
+        "reg_alpha": [
+            0.001,
+            0.1
+        ],
+        "reg_lambda": [
+            0.001,
+            0.1
+        ],
+        "gamma": [
+            0.001,
+            100
         ]
     },
     "cb": {
-        "n_estimators": [
+        "iterations": [
             100,
             500,
             1000
         ],
         "learning_rate": [
             0.001,
-            0.01,
-            0.1
+            0.3
         ],
         "max_depth": [
-            9,
-            13,
-            15,
-            17,
-            20
-        ],
-        "min_samples_split": [
-            2,
             6,
-            10
+            50
         ],
-        "min_samples_leaf": [
+        "l2_leaf_reg": [
+            0.001,
+            0.1
+        ],
+        "auto_class_weights": [
+            "Balanced"
+        ],
+        "boosting_type": [
+            "Ordered"
+        ],
+        "min_data_in_leaf": [
             2,
-            5,
-            10,
-            20
+            30
         ]
     }
 }
