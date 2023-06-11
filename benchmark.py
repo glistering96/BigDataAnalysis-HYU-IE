@@ -159,6 +159,7 @@ class Benchmark:
             
             _drop_text = True
             _make_dummies = True
+            cv = self.cv
             
             # check if random state attribute exists in the model class
             if 'random_state' in self.model_tables[nm]().get_params().keys():
@@ -184,7 +185,7 @@ class Benchmark:
                 param_range['od_wait'] = [10]                
                 search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
                 model.set_params(cat_features=self.cat_cols)
-                
+                cv = 5
                 # _drop_text = True  # if you want to run the model also with text when using catboost, set drop_text to False
                 _make_dummies = False   # catboost does not need dummies
             
@@ -200,7 +201,7 @@ class Benchmark:
                 n_jobs=search_n_jobs,
                 scoring=self.scoring,
                 refit=self._score_of_interest,                
-                cv=self.cv,
+                cv=cv,
                 use_gpu=self.use_gpu                
             )
             
