@@ -23,6 +23,9 @@ import pandas as pd
 from sklearn.exceptions import UndefinedMetricWarning
 import warnings
 
+import ray
+from ray.tune.sklearn import TuneSearchCV
+
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
 class Benchmark:
@@ -40,15 +43,19 @@ class Benchmark:
     BASEDIR = str(Path(__file__).parent)
     
     def __init__(self, 
-                 data,
+                 imputed,
+                 original,
                  logging_nm='benchmark', 
                  label_nm='fradulent',
                  scoring={'precision': 'precision', 'recall': 'recall', 'f1': 'f1', "AUC": "roc_auc"},
+                 cat_cols=['location', 'employment_type', 'required_experience', 'required_education', 
+                                'industry', 'function'],
                  cv=10,
                  seed=42,
                  save_cv_result=True
                  ) -> None:
-        self.data = data
+        self.imputed = imputed
+        self.original = original
         self.label_nm = label_nm
         self.cv = cv
         self.base_path = f'{self.BASEDIR}/{logging_nm}'
@@ -59,13 +66,36 @@ class Benchmark:
         self.seed = seed
         self.save_cv_result = save_cv_result
         self.best_params = {}
+        self.cat_cols = cat_cols
         # if current os is windows, set n_jobs to 1 else -1
         self.n_jobs = 1 if os.name == 'nt' else -1
         self.use_gpu = self._test_xgb_finds_gpu()
+        
+        ray.init(
+                num_cpus=8,
+                num_gpus=1 if self.use_gpu else 0
+        )
     
+    def preprocess(self, imputed_df, original_df, make_dummies=True, drop_text=True):
+        df = imputed_df.copy(deep=True)
+
+        text_cols = ['title', 'company_profile', 'description', 'requirements', 'benefits']
+        
+        if drop_text:
+            df = df.drop(text_cols, axis=1)
+        
+        if make_dummies:
+            df = pd.get_dummies(df, columns=self.cat_cols)
+            
+        # concat fradulent col to imputed_df from original_df
+        df['fraudulent'] = original_df['fraudulent']
+        
+        return df
+
+
     def _run_cv(self, model, **kwargs):
-        y = self.data[self.label_nm]
-        X = self.data.drop(self.label_nm, axis=1)
+        y = self.imputed[self.label_nm]
+        X = self.imputed.drop(self.label_nm, axis=1)
         cv = StratifiedKFold(n_splits=self.cv, shuffle=True, random_state=self.seed)
         
         try:
@@ -77,14 +107,14 @@ class Benchmark:
         
         return cv_scores
     
-    def save_json(self, data, path):
+    def save_json(self, imputed, path):
         _path = Path(path)
         
         if not _path.parent.exists():
             _path.parent.mkdir(parents=True)
             
         with open(_path, 'w') as f:
-            json.dump(data, f, indent=4)
+            json.dump(imputed, f, indent=4)
             
     def load_json(self, path):
         _path = Path(path)
@@ -93,12 +123,13 @@ class Benchmark:
             raise FileNotFoundError(f'{path} does not exist.')
             
         with open(_path, 'r') as f:
-            data = json.load(f)
+            imputed = json.load(f)
             
-        return data
+        return imputed
     
     def _test_xgb_finds_gpu(capsys):
         """Check if XGBoost finds the GPU."""
+        import numpy as np
         X = np.random.rand(2, 4)
         y = np.random.randint(0, 1, 2)
 
@@ -121,14 +152,13 @@ class Benchmark:
         except FileNotFoundError:
             self.logger.info(f'{BEST_PARMAS_PATH} does not exist. Start searching best params...')
             self.best_params = {}
+            
+        search_n_jobs = 8 if self.n_jobs == -1 else self.n_jobs
         
         for nm, param_range in model_param_range.items():
-            if nm in self.best_params.keys():
-                self.logger.info(f'{nm} already has best params. Skip searching best params.')
-                continue
             
-            if nm == 'xgb' and self.use_gpu:
-                param_range['tree_method'] = ['gpu_hist']
+            _drop_text = True
+            _make_dummies = True
             
             # check if random state attribute exists in the model class
             if 'random_state' in self.model_tables[nm]().get_params().keys():
@@ -136,22 +166,53 @@ class Benchmark:
                 
             else:
                 model = self.model_tables[nm]()
+            
+            if nm in self.best_params.keys():
+                self.logger.info(f'{nm} already has best params. Skip searching best params.')
+                continue
+            
+            if nm == 'xgb':
+                if self.use_gpu:
+                    param_range['tree_method'] = ['gpu_hist']
+                    param_range['gpu_id'] = [0]
+                    
+                param_range['scale_pos_weight'] = [len(self.original[self.original[self.label_nm] == 0]) / self.original.shape[0]] # scale_pos_weight: negative ratio of label
+                search_n_jobs = 2
                 
-            self.logger.info(f'Searching best params for {nm}...')
+            if nm == 'cb':
+                if self.use_gpu:
+                    param_range['task_type'] = ['GPU']
+                    
+                param_range['max_depth'] = (3, 16)
+                param_range['od_wait'] = [10]                
+                search_n_jobs = 1
+                
+                model.set_params(cat_features=self.cat_cols)
+                
+                # _drop_text = True  # if you want to run the model also with text when using catboost, set drop_text to False
+                _make_dummies = False   # catboost does not need dummies
             
+                                       
+
+            self.logger.info(f'Searching best params for {nm} with {search_n_jobs} jobs...')
             
-            search_n_jobs = 8 if self.n_jobs == -1 else self.n_jobs
-            
-            search = GridSearchCV(
+            search = TuneSearchCV(
                 model,
-                param_grid=param_range,
-                scoring=self.scoring,
-                cv=self.cv,
-                refit=self._score_of_interest,
+                param_range,
+                search_optimization="bayesian",
+                n_trials=20,
+                early_stopping=False,
+                max_iters=1,
                 n_jobs=search_n_jobs,
+                scoring=self.scoring,
+                refit=self._score_of_interest,                
+                cv=self.cv,
+                use_gpu=self.use_gpu                
             )
             
-            X, y = self.data.drop(self.label_nm, axis=1), self.data[self.label_nm]
+
+            data = self.preprocess(self.imputed, self.original, drop_text=_drop_text, make_dummies=_make_dummies)
+            X, y = data.drop(self.label_nm, axis=1), data[self.label_nm]
             
             search.fit(X, y)
             
@@ -167,6 +228,7 @@ class Benchmark:
             
             # save the best params
             self.save_json(self.best_params, BEST_PARMAS_PATH)
+            self.logger.info(f'Best params for {nm} on {self._score_of_interest} with {search.best_score_}: {search.best_params_}')
             self.logger.info(f'Finished searching best params for {nm}.')
 
     def _get_param_ranges(self, param_range_file, skip_param_search=False):
@@ -244,7 +306,8 @@ class Benchmark:
                 
             # save intermediate results
             self.save_json(results, self.result_path)
-            
+        
+        ray.shuwdonw()
         return results
     
 
@@ -253,13 +316,13 @@ if __name__ == '__main__':
     import pandas as pd
     import numpy as np
     
-    data = pd.DataFrame(np.random.randint(0, 100, size=(1000, 4)), columns=list('ABCD'))
-    data['fradulent'] = np.random.randint(0, 2, size=1000)
+    imputed = pd.DataFrame(np.random.randint(0, 100, size=(1000, 4)), columns=list('ABCD'))
+    imputed['fradulent'] = np.random.randint(0, 2, size=1000)
     
     # load the predefined parameter ranges
-    param_range = "./data/param_range.json"
+    param_range = "./imputed/param_range.json"
     
-    bm = Benchmark(data, 
+    bm = Benchmark(imputed, 
                    label_nm='fradulent', cv=5, 
                    logging_nm='debug')
     

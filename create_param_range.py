@@ -12,43 +12,49 @@
                     }
 """
 N_ESTIAMTORS =  [100, 500, 1000]
-LR = [0.001, 0.01, 0.1]
-MAX_DEPTH = [6, 9, 15, 20, 30]
-MIN_SAMPLES_SPLIT = [2, 5, 10, 15]
-MIN_SAMPLES_LEAF = [2, 5, 10, 15]
+LR = (0.001, 0.3)
+MAX_DEPTH = (6, 50)
+MIN_SAMPLES_SPLIT = (2, 30)
+MIN_SAMPLES_LEAF = (2, 30)
+C = (0.001, 100)
+N_NEIGHBORS = (3, 100)
+REG = (0.001, 0.1)
+MIN_CHILD_WEIGHT = (0.001, 100)
+GAMMA = (0.001, 100)
+
 
 params = {
     'rf': {'n_estimators': N_ESTIAMTORS,
               'max_depth': MAX_DEPTH,
                 'min_samples_split': MIN_SAMPLES_SPLIT,
                 'min_samples_leaf': MIN_SAMPLES_LEAF,
-                'criterion': ['gini', 'entropy']
+                'criterion': ['entropy']
                 },
     
-    'lr': {'penalty': ['l1', 'l2', 'elasticnet', None],
-                'C': [0.001,  0.1, 1, 10, 100],
+    'lr': {'penalty': ['l2', None],
+                'C': C,
                 'solver': ['newton-cholesky'],
-                'max_iter': [50000]
+                'max_iter': [100000]
     },
     
-    'svm': {'C': [0.001, 0.01, 0.1, 1, 10, 50, 100],
+    'svm': {'C': C,
                 'kernel': ['rbf'],
                 
     },
     
-    'knn': {'n_neighbors': [15, 17, 20, 25, 30],
+    'knn': {'n_neighbors': N_NEIGHBORS,
     },
     
     'ada': {'n_estimators': N_ESTIAMTORS,
                 'learning_rate': LR
     },
     
-    'gb': {'n_estimators': N_ESTIAMTORS,
-                'learning_rate': LR,
-                'max_depth': MAX_DEPTH,
-                'min_samples_split': MIN_SAMPLES_SPLIT,
-                'min_samples_leaf': MIN_SAMPLES_LEAF,
-    },
+    # 'gb': {'n_estimators': N_ESTIAMTORS,
+    #             'learning_rate': LR,
+    #             'max_depth': MAX_DEPTH,
+    #             'min_samples_split': MIN_SAMPLES_SPLIT,
+    #             'min_samples_leaf': MIN_SAMPLES_LEAF,
+    # },
     
     'et': {'n_estimators': N_ESTIAMTORS,
                 'max_depth': MAX_DEPTH,
@@ -60,16 +66,20 @@ params = {
     'xgb': {'n_estimators': N_ESTIAMTORS,
                 'learning_rate': LR,
                 'max_depth': MAX_DEPTH,
-                'min_samples_split': MIN_SAMPLES_SPLIT,
-                'min_samples_leaf': MIN_SAMPLES_LEAF,
+                'min_child_weight': MIN_SAMPLES_SPLIT,
+                'reg_alpha': REG,
+                'reg_lambda': REG,
+                'gamma': GAMMA,
                 
     },
     
-    'cb': {'n_estimators': N_ESTIAMTORS,
+    'cb': {'iterations': N_ESTIAMTORS,
                    'learning_rate': LR,
                     'max_depth': MAX_DEPTH,
-                    'min_samples_split': MIN_SAMPLES_SPLIT,
-                    'min_samples_leaf': MIN_SAMPLES_LEAF,
+                    'l2_leaf_reg': REG,
+                    'auto_class_weights': ['Balanced'],
+                    'boosting_type': ['Ordered'],
+                    'min_data_in_leaf': MIN_SAMPLES_LEAF,
                     
         }        
     

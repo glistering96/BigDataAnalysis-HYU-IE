@@ -1,0 +1,65 @@
+{
+    "rf": {
+        "params": {
+            "n_estimators": 1000,
+            "max_depth": 50,
+            "min_samples_split": 30,
+            "min_samples_leaf": 2,
+            "criterion": "entropy"
+        },
+        "score": 0.9524467514586472
+    },
+    "lr": {
+        "params": {
+            "penalty": "l2",
+            "C": 6.6627095070886355,
+            "solver": "newton-cholesky",
+            "max_iter": 100000
+        },
+        "score": 0.8986215310572835
+    },
+    "svm": {
+        "params": {
+            "C": 19.10968887040655,
+            "kernel": "rbf"
+        },
+        "score": 0.9480576278288856
+    },
+    "knn": {
+        "params": {
+            "n_neighbors": 53
+        },
+        "score": 0.9286923101066902
+    },
+    "ada": {
+        "params": {
+            "n_estimators": 1000,
+            "learning_rate": 0.10186363255079073
+        },
+        "score": 0.892611999832679
+    },
+    "et": {
+        "params": {
+            "n_estimators": 100,
+            "max_depth": 50,
+            "min_samples_split": 30,
+            "min_samples_leaf": 2
+        },
+        "score": 0.9540920011542744
+    },
+    "xgb": {
+        "params": {
+            "n_estimators": 100,
+            "learning_rate": 0.25099720816814797,
+            "max_depth": 50,
+            "min_child_weight": 4,
+            "reg_alpha": 0.05789611419048778,
+            "reg_lambda": 0.1,
+            "gamma": 0.001,
+            "tree_method": "gpu_hist",
+            "gpu_id": 0,
+            "scale_pos_weight": 0.9515659955257271
+        },
+        "score": 0.9525856337922528
+    }
+}
