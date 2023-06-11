@@ -182,8 +182,7 @@ class Benchmark:
             if nm == 'cb':
                 param_range['max_depth'] = (3, 16)
                 param_range['od_wait'] = [10]                
-                search_n_jobs = 1
-                param_range['iterations'] = [100]       # cat boost take too long to calculate, so we set iterations to 100
+                search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
                 model.set_params(cat_features=self.cat_cols)
                 
                 # _drop_text = True  # if you want to run the model also with text when using catboost, set drop_text to False
@@ -202,7 +201,6 @@ class Benchmark:
                 scoring=self.scoring,
                 refit=self._score_of_interest,                
                 cv=self.cv,
-                verbose=2,
                 use_gpu=self.use_gpu                
             )
             
@@ -303,7 +301,7 @@ class Benchmark:
             # save intermediate results
             self.save_json(results, self.result_path)
         
-        ray.shuwdonw()
+        ray.shutdown()
         return results
     
 
