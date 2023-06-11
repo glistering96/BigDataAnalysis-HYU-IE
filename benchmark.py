@@ -180,20 +180,14 @@ class Benchmark:
                 search_n_jobs = 2
                 
             if nm == 'cb':
-                if self.use_gpu:
-                    param_range['task_type'] = ['GPU']
-                    
                 param_range['max_depth'] = (3, 16)
                 param_range['od_wait'] = [10]                
-                search_n_jobs = 1
-                
+                search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
                 model.set_params(cat_features=self.cat_cols)
                 
                 # _drop_text = True  # if you want to run the model also with text when using catboost, set drop_text to False
                 _make_dummies = False   # catboost does not need dummies
             
-                                       
-
             self.logger.info(f'Searching best params for {nm} with {search_n_jobs} jobs...')
             
             search = TuneSearchCV(
@@ -307,7 +301,7 @@ class Benchmark:
             # save intermediate results
             self.save_json(results, self.result_path)
         
-        ray.shuwdonw()
+        ray.shutdown()
         return results
     
 
