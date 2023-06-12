@@ -4,4 +4,6 @@ seaborn
 nltk
 jupyter
 matplotlib
-ray
+ray[air]
+catboost
+xgboost
