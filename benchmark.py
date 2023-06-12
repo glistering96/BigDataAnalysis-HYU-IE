@@ -202,9 +202,7 @@ class Benchmark:
                 scoring=self.scoring,
                 refit=self._score_of_interest,                
                 cv=self.cv,
-                use_gpu=self.use_gpu,
-                local_dir='./ray_results',
-                name=self.base_path,      
+                use_gpu=self.use_gpu    
             )
             
 
