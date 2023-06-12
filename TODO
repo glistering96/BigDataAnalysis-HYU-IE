@@ -11,3 +11,8 @@
 1. Rule set 정리 필요
 2. Data Imputation 관련한 자료 정리 필요 (DataWig)
 3. Scoring measure precision vs recall vs f1 score vs accuracy 중에 뭐 할지
+
+
+# 추가할 거
+Logistic test for feature selection
+oversampling, Undersampling, SMOTE 

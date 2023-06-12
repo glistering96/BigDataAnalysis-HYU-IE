@@ -25,6 +25,8 @@ import warnings
 
 import ray
 from ray.tune.sklearn import TuneSearchCV
+from src.sampler import Sampler
+
 
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
@@ -52,7 +54,9 @@ class Benchmark:
                                 'industry', 'function'],
                  cv=10,
                  seed=42,
-                 save_cv_result=True
+                 save_cv_result=True,
+                 sample_method=None,
+                 sampler_kwargs={},
                  ) -> None:
         self.imputed = imputed
         self.original = original
@@ -70,6 +74,8 @@ class Benchmark:
 
         self.n_jobs = 4 if os.name == 'nt' else -1
         self.use_gpu = self._test_xgb_finds_gpu()
+        
+        self.sampler = Sampler(method=sample_method, **sampler_kwargs)
         
         ray.init(
                 num_cpus=os.cpu_count()-1,
@@ -207,9 +213,14 @@ class Benchmark:
             
 
             data = self.preprocess(self.imputed, self.original, drop_text=_drop_text, make_dummies=_make_dummies)
+        
             X, y = data.drop(self.label_nm, axis=1), data[self.label_nm]
             
-            search.fit(X, y)
+            self.logger.info(f"Running a sampler: {self.sampler.method}")
+            X_sampled, y_sampled = self.sampler.run(X, y)
+            self.logger.info(f"Running a sampler finished.")
+            
+            search.fit(X_sampled, y_sampled)
             
             if self.save_cv_result:
                 cv_result = search.cv_results_
