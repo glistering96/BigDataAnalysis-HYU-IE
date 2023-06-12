@@ -9,3 +9,4 @@ catboost
 xgboost
 tune-sklearn
 numpy==1.23.*
+scikit-optimize

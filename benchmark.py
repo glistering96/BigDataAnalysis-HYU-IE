@@ -67,8 +67,8 @@ class Benchmark:
         self.save_cv_result = save_cv_result
         self.best_params = {}
         self.cat_cols = cat_cols
-        # if current os is windows, set n_jobs to 1 else -1
-        self.n_jobs = 1 if os.name == 'nt' else -1
+
+        self.n_jobs = 4 if os.name == 'nt' else -1
         self.use_gpu = self._test_xgb_finds_gpu()
         
         ray.init(
@@ -202,7 +202,9 @@ class Benchmark:
                 scoring=self.scoring,
                 refit=self._score_of_interest,                
                 cv=self.cv,
-                use_gpu=self.use_gpu                
+                use_gpu=self.use_gpu,
+                local_dir='./ray_results',
+                name=self.base_path,      
             )
             
 
