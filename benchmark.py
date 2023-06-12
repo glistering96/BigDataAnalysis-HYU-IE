@@ -72,7 +72,7 @@ class Benchmark:
         self.use_gpu = self._test_xgb_finds_gpu()
         
         ray.init(
-                num_cpus=8,
+                num_cpus=os.cpu_count()-1,
                 num_gpus=1 if self.use_gpu else 0
         )
     
@@ -94,8 +94,9 @@ class Benchmark:
 
 
     def _run_cv(self, model, **kwargs):
-        y = self.imputed[self.label_nm]
-        X = self.imputed.drop(self.label_nm, axis=1)
+        data = self.preprocess(self.imputed, self.original)
+        X, y = data.drop(self.label_nm, axis=1), data[self.label_nm]
+        
         cv = StratifiedKFold(n_splits=self.cv, shuffle=True, random_state=self.seed)
         
         try:
