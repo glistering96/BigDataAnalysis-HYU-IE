@@ -7,3 +7,5 @@ matplotlib
 ray[air]
 catboost
 xgboost
+tune-sklearn
+numpy==1.23.*
