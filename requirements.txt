@@ -10,3 +10,4 @@ xgboost
 tune-sklearn
 numpy==1.23.*
 scikit-optimize
+imbalanced-learn

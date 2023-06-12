@@ -2,12 +2,11 @@ import pandas as pd
 import numpy as np
 from benchmark import Benchmark
 
-# filter UndefinedMetricWarning:
-import warnings
-from sklearn.exceptions import UndefinedMetricWarning
 
-warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
+# select one of methods in [None, random_over, random_under, smote] in the below variable.
+# adasyn, cluster_centroid is available but we do not consider these two here
 
+_sample_method = 'random_under' # str type is required
 
 def main():   
     model_param = f"./data/param_range.json"
@@ -26,8 +25,9 @@ def main():
                 rule_str  = 'rule' if _rule else 'no_rule'
                 
                 benchmark = Benchmark(imputed, original,
-                                    logging_nm= f'{_token}_{_chained}_{rule_str}_ray',
-                                        label_nm='fraudulent')
+                                      sample_method=_sample_method, 
+                                      logging_nm= f'{_token}_{_chained}_{_sample_method}',
+                                      label_nm='fraudulent')
         
                 results = benchmark.run(model_param, skip_param_search=False)
                 print(results)
