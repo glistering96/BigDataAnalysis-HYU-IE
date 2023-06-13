@@ -30,6 +30,8 @@ from src.feature_select import FeatureSelector
 
 warnings.filterwarnings("ignore", category=UndefinedMetricWarning)
 
+import gc
+
 class Benchmark:
     model_tables = {'rf': RandomForestClassifier, 
                     'lr': LogisticRegression,
@@ -42,7 +44,7 @@ class Benchmark:
                     'cb': CatBoostClassifier
                     }
     
-    BASEDIR = str(Path(__file__).parent)
+    BASEDIR = str(Path(__file__).parent.parent)
     
     def __init__(self, 
                  original_df,
@@ -129,13 +131,22 @@ class Benchmark:
         return X_sampled, y_sampled
 
 
-    def _run_cv(self, model, make_dummies, drop_text, **kwargs):
+    def _run_cv(self, nm, make_dummies, drop_text, **params):
         X, y = self.preprocess(self.original_df, make_dummies=make_dummies, drop_text=drop_text)
+        
+        model = self._get_estimator(nm, params, y, is_for_search=False)
         
         cv = StratifiedKFold(n_splits=self.cv, shuffle=True, random_state=self.seed)
         
+        model.set_params(**params)
+        
+        cv_jobs = self.n_jobs if nm != 'knn' else 1
+        
+        if hasattr(model, 'n_jobs'):
+            model.set_params(n_jobs=-1)
+        
         try:
-            cv_scores = cross_validate(model(**kwargs), X, y, cv=cv, scoring=self.scoring, )
+            cv_scores = cross_validate(model, X, y, cv=cv, scoring=self.scoring, n_jobs=cv_jobs)
             
         except FitFailedWarning as e:
             self.logger.error(f'FitFailedWarning: {e}')
@@ -189,14 +200,21 @@ class Benchmark:
             
         return _drop_text, _make_dummies    
 
-    
-    def _get_estimator(self, model_nm, param_range):
-        # Although you can manually add parameters by modifying this method, we do not recommend it.
-        # One should istead give a dictionary of parameters to the param_range argument of the run method by modifynig the predefined parameter json file.
-        
-        # set the number of jobs for parameter search
+    def _get_njob_counts(self, model_nm):
         search_n_jobs = 8 if self.n_jobs == -1 else self.n_jobs
         
+        if model_nm == 'xgb':
+            search_n_jobs = 2
+            
+        elif model_nm == 'cb':
+            search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
+            
+        return search_n_jobs    
+    
+    def _get_estimator(self, model_nm, param_range, y, is_for_search=True):
+        # Although you can manually add parameters by modifying this method, we do not recommend it.
+        # One should istead give a dictionary of parameters to the param_range argument of the run method by modifynig the predefined parameter json file.
+                
         # check if random state attribute exists in the model class
         if 'random_state' in self.model_tables[model_nm]().get_params().keys():
             model = self.model_tables[model_nm](random_state=self.seed)
@@ -205,20 +223,31 @@ class Benchmark:
             model = self.model_tables[model_nm]()
             
         if model_nm == 'xgb':
+            scale_pos_weight = y.value_counts()[1] / (y.value_counts()[0] + y.value_counts()[1])
+            
             if self.use_gpu:
-                param_range['tree_method'] = ['gpu_hist']
-                param_range['gpu_id'] = [0]
+                if is_for_search:
+                    param_range['tree_method'] = ['gpu_hist']
+                    param_range['gpu_id'] = [0]
+                    param_range['scale_pos_weight'] = [scale_pos_weight]
+                    
+                else:
+                    param_range['tree_method'] = 'gpu_hist'
+                    param_range['gpu_id'] = 0
+                    param_range['scale_pos_weight'] = scale_pos_weight
+
                 
-            param_range['scale_pos_weight'] = [len(self.original_df[self.original_df[self.label_nm] == 0]) / self.original_df.shape[0]] # scale_pos_weight: negative ratio of label
-            search_n_jobs = 2
-                
-            if model_nm == 'cb':
+        if model_nm == 'cb':
+            if is_for_search:
                 param_range['max_depth'] = (3, 16)
-                param_range['od_wait'] = [10]                
-                search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
-                model.set_params(cat_features=self.cat_cols)
+                param_range['od_wait'] = [10]          
                 
-        return model, search_n_jobs
+            else:
+                param_range['od_wait'] = 10
+
+            model.set_params(cat_features=self.cat_cols)
+        
+        return model
     
     def _search_best_params(self, param_range, skip_param_search, **kwargs):
         model_param_range = self._get_param_ranges(param_range, skip_param_search)
@@ -241,9 +270,13 @@ class Benchmark:
                 self.logger.info(f'{nm} is in the skip list. Skip searching best params.')
                 continue
             
-            model, search_n_jobs = self._get_estimator(nm, param_range)
+            search_n_jobs = self._get_njob_counts(nm)
             
             self.logger.info(f'Searching best params for {nm} with {search_n_jobs} jobs...')
+            
+            _drop_text, _make_dummies = self._get_preprocessing_rule(nm)
+            X, y = self.preprocess(self.original_df, drop_text=_drop_text, make_dummies=_make_dummies)
+            model = self._get_estimator(nm, param_range, y, is_for_search=True)
             
             search = TuneSearchCV(
                 model,
@@ -258,10 +291,7 @@ class Benchmark:
                 cv=self.cv,
                 use_gpu=self.use_gpu    
             )
-            
-            _drop_text, _make_dummies = self._get_preprocessing_rule(nm)
-            X, y = self.preprocess(self.original_df, drop_text=_drop_text, make_dummies=_make_dummies)
-                    
+                                
             search.fit(X, y)
             
             if self.save_cv_result:
@@ -343,28 +373,37 @@ class Benchmark:
         
         self._search_best_params(param_range, skip_param_search)
         
-        for nm, params in self.best_params.items():
+        for nm, best_param_result in self.best_params.items():
+            params = best_param_result['params']
+            
             try:
-                if nm in self.model_tables.keys() and nm not in results.keys():
+                if nm in self.model_tables.keys():
                     if nm in self.skip_model:
                         self.logger.info(f'{nm} is in the skip list. Skip final evaluation.')
                         continue
                     
+                    if nm in results.keys() and "cv_avg_scores" in results[nm]:
+                        # if the result of the model already exists and the values are not related with errors, skip the final evaluation
+                        self.logger.info(f'{nm} is in the previous results. Skip final evaluation.')
+                        continue
+                    
                     # only run if the model is defined and not in the results
                     self.logger.info(f'Running benchmark on {nm} with params {params}')
-                    model = self.model_tables[nm]
-                    cv_scores = self._run_cv(model, **params)
+                    
+                    # get prerprocessing rules
+                    drop_text, make_dummies = self._get_preprocessing_rule(nm)
+                    cv_scores = self._run_cv(nm, drop_text=drop_text, make_dummies=make_dummies, **params)
                     avg_scores = {k: v.mean() for k, v in cv_scores.items()}
                     
                     results[nm] = {
                         "cv_avg_scores": avg_scores, 
                         "params": params,
-                        'feature_result':
-                            {
-                                'method': self.feat_selector.get_method_nm(),
-                                'selected_features': self.feat_selector.get_feature_names(),
-                                'featuer_scores': self.feat_selector.get_feature_score()
-                            }
+                        # 'feature_result':
+                        #     {
+                        #         'method': self.feat_selector.get_method_nm(),
+                        #         'selected_features': self.feat_selector.get_feature_names(),
+                        #         'featuer_scores': self.feat_selector.get_feature_score()
+                        #     }
                         }
                     self.logger.info(f'Finished running benchmark on {nm}')
                     
@@ -375,6 +414,8 @@ class Benchmark:
                 results[nm] = str(e)
                 self.logger.error(f'Error running benchmark on {nm}: {e}')
                 
+            gc.collect()
+            
             # save intermediate results
             self.save_json(results, self.result_path)
         
