@@ -6,7 +6,7 @@ from itertools import product
 # select one of methods in [None, random_over, random_under, smote] in the below variable.
 # adasyn, cluster_centroid is available but we do not consider these two here
 
-_sample_method = 'random_under' # str type is required
+_sample_method = 'random_over' # str type is required
 
 # SMOTE: yejoon
 # random_over: wonjun
@@ -31,7 +31,7 @@ def main():
         
         benchmark = Benchmark(df,
                                 sample_method=_sample_method, 
-                                logging_nm= f'{_chained}_{_sample_method}_{_rule_txt}',
+                                logging_nm= f'{_chained}_{_sample_method}_{_rule_txt}_{_feature_select}',
                                 feat_select_method=_feature_select,
                                 label_nm='fraudulent',
                                 skip_model=['cb']
