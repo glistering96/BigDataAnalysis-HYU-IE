@@ -23,8 +23,8 @@ def main():
     # get the combination of chained, rule, feature_select
     
     for _chained, _rule, _feature_select in product(_chained_lst, _rule_lst, _feature_select_lst):
-        _rule_txt = 'rule_added' if _rule else ''
-        _path = f'./data/imputed/{_token}/{_chained}/fake_job_postings_{_rule_txt}.csv'
+        _rule_txt = '_rule_added' if _rule else ''
+        _path = f'./data/imputed/{_token}/{_chained}/fake_job_postings{_rule_txt}.csv'
         
         # read csv and pass it 
         df = pd.read_csv(_path)
