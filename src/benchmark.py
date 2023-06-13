@@ -54,7 +54,7 @@ class Benchmark:
                                 'industry', 'function'],
                  cv=10,
                  seed=42,
-                 save_cv_result=True,
+                 save_cv_result=True,   # save param search result to csv file
                  
                  sample_method=None,
                  sampler_kwargs={},
@@ -62,7 +62,7 @@ class Benchmark:
                  feat_select_method=None,
                  feat_select_kwargs={},
                  
-                 num_feat_to_sel : Union[int, float] = 0.5,
+                 num_feat_to_sel : Union[int, float] = 0.75,
                  
                  skip_model = []
                  ) -> None:
@@ -85,9 +85,9 @@ class Benchmark:
         self.n_jobs = 4 if os.name == 'nt' else -1
         self.use_gpu = self._test_xgb_finds_gpu()   # must be called before ray.init()
         
-        self.sampler = Sampler(method=sample_method, **sampler_kwargs)
+        self.sampler = Sampler(method_nm=sample_method, **sampler_kwargs)
         
-        self.feat_selector = FeatureSelector(method=feat_select_method, **feat_select_kwargs)
+        self.feat_selector = FeatureSelector(method_nm=feat_select_method, **feat_select_kwargs)
         self.num_feat_to_sel = num_feat_to_sel
         
         ray.init(
@@ -118,12 +118,11 @@ class Benchmark:
             self.logger.warning(f'k is larger than the number of features. k is set to half of the features {X.shape[1]//2}')
             k = X.shape[1]//2
         
-        self.logger.info(f"Running a feature selector: {self.feat_selector.method}")
-        
+        self.logger.info(f"Running a feature selector: {self.feat_selector.get_method_nm()}")
         X_filtered = self.feat_selector.run(X, y, k)
         self.logger.info(f"Running a feature selector finished.")
         
-        self.logger.info(f"Running a sampler: {self.sampler.method}")
+        self.logger.info(f"Running a sampler: {self.sampler.get_method_nm()}")
         X_sampled, y_sampled = self.sampler.run(X_filtered, y)
         self.logger.info(f"Running a sampler finished.")
             

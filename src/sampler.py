@@ -17,18 +17,18 @@ class Sampler:
     }
 
     def __init__(self,
-                 method=None,
+                 method_nm=None,
                  seed=43,
                  **kwargs
                  ) -> None:
-        self.method = method
+        self.method_nm = method_nm
         self.seed = seed
         
-        if method is not None and method not in self.methods.keys():
-            raise ValueError(f"Sampling method must be one of: {self.methods.keys()}. Selected method: {self.method}")
+        if self.method_nm is not None and self.method_nm not in self.methods.keys():
+            raise ValueError(f"Sampling method_nm must be one of: {self.methods.keys()}. Selected method_nm: {self.method_nm}")
         
-        if method is not None:
-            self._sampler = self.methods[method](random_state=self.seed, **kwargs)
+        if self.method_nm is not None:
+            self._sampler = self.methods[method_nm](random_state=self.seed, **kwargs)
             
         else:
             self._sampler = None
@@ -37,13 +37,16 @@ class Sampler:
         if self._sampler is None:
             return X, y
         return self._sampler.fit_resample(X, y)
+    
+    def get_method_nm(self):
+        return self.method_nm if self.method_nm is not None else 'None'
 
 # api style function
-def run_sample(X, y, method=None, **kwargs):
-    if method is None:
+def run_sample(X, y, method_nm=None, **kwargs):
+    if method_nm is None:
         return X, y
     
-    sampler = Sampler(method, **kwargs)
+    sampler = Sampler(method_nm, **kwargs)
     
     return sampler.run(X, y)
     
