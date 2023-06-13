@@ -28,12 +28,19 @@ class FeatureSelector:
         self.method = method
         
         if method is not None:
-            self._method = self.methods[method](**kwargs)
+            self._method = self.methods[method]
             
     def select(self, X, y, k):
         # select k best features
         
-        selected = SelectKBest(self._method, k=k).fit(X, y)
+        if self.method is None:
+            return X
+        
+        selected = SelectKBest(score_func=self._method, k=k).fit(X, y)
         
         return selected.transform(X)
+    
+    def run(self, X, y, k):
+        # alias for select method
+        return self.select(X, y, k)
     

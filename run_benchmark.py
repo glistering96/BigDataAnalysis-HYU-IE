@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from benchmark import Benchmark
+from src.benchmark import Benchmark
 
 
 # select one of methods in [None, random_over, random_under, smote] in the below variable.

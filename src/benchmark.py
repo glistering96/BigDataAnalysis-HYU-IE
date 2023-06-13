@@ -50,6 +50,7 @@ class Benchmark:
                  logging_nm='benchmark', 
                  label_nm='fradulent',
                  scoring={'precision': 'precision', 'recall': 'recall', 'f1': 'f1', "AUC": "roc_auc"},
+                 text_cols = ['title', 'company_profile', 'description', 'requirements', 'benefits'],
                  cat_cols=['location', 'employment_type', 'required_experience', 'required_education', 
                                 'industry', 'function'],
                  cv=10,
@@ -61,6 +62,8 @@ class Benchmark:
                  
                  feat_select_method=None,
                  feat_select_kwargs={},
+                 
+                 num_feat_to_sel : Union[int, float] = 0.5,
                  ) -> None:
         self.imputed = imputed
         self.original = original
@@ -74,7 +77,9 @@ class Benchmark:
         self.seed = seed
         self.save_cv_result = save_cv_result
         self.best_params = {}
+        
         self.cat_cols = cat_cols
+        self.text_cols = text_cols
 
         self.n_jobs = 4 if os.name == 'nt' else -1
         self.use_gpu = self._test_xgb_finds_gpu()
@@ -82,6 +87,7 @@ class Benchmark:
         self.sampler = Sampler(method=sample_method, **sampler_kwargs)
         
         self.feat_selector = FeatureSelector(method=feat_select_method, **feat_select_kwargs)
+        self.num_feat_to_sel = num_feat_to_sel
         
         ray.init(
                 num_cpus=os.cpu_count()-1,
@@ -90,11 +96,9 @@ class Benchmark:
     
     def preprocess(self, imputed_df, original_df, make_dummies=True, drop_text=True):
         df = imputed_df.copy(deep=True)
-
-        text_cols = ['title', 'company_profile', 'description', 'requirements', 'benefits']
-        
+   
         if drop_text:
-            df = df.drop(text_cols, axis=1)
+            df = df.drop(self.text_cols, axis=1)
         
         if make_dummies:
             df = pd.get_dummies(df, columns=self.cat_cols)
@@ -154,7 +158,7 @@ class Benchmark:
             return True
         except:
             return False
-    
+            
     def _search_best_params(self, param_range, skip_param_search, **kwargs):
         model_param_range = self._get_param_ranges(param_range, skip_param_search)
         BEST_PARMAS_PATH = f'{self.base_path}/{self._score_of_interest}/best_params.json'
@@ -222,8 +226,15 @@ class Benchmark:
         
             X, y = data.drop(self.label_nm, axis=1), data[self.label_nm]
             
+            k = int(X.shape[1] * self.num_feat_to_sel) if isinstance(self.num_feat_to_sel, float) else self.num_feat_to_sel
+            
+            if k > X.shape[1]:
+                self.logger.warning(f'k is larger than the number of features. k is set to half of the features {X.shape[1]//2}')
+                k = X.shape[1]//2
+            
             self.logger.info(f"Running a feature selector: {self.feat_selector.method}")
-            X_filtered = self.feat_selector.run(X, y)
+            
+            X_filtered = self.feat_selector.run(X, y, k)
             self.logger.info(f"Running a feature selector finished.")
             
             self.logger.info(f"Running a sampler: {self.sampler.method}")
