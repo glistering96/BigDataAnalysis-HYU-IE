@@ -76,7 +76,7 @@ class Benchmark:
         self.logger = init_logger({'level': 'INFO', 'name': logging_nm})
         self.seed = seed
         self.save_cv_result = save_cv_result
-        self.skip_model = skip_model
+        self.skip_model = skip_model if isinstance(skip_model, list) else [skip_model]
         self.best_params = {}
         
         self.cat_cols = cat_cols
@@ -273,7 +273,16 @@ class Benchmark:
                     
                 pd.DataFrame.from_dict(cv_result).to_csv(f'{self.base_path}/cv_result/{self._score_of_interest}/{nm}.csv', index=False)
             
-            self.best_params[nm] = {'params': search.best_params_, 'score': search.best_score_}
+            self.best_params[nm] = {
+                'params': search.best_params_, 
+                'score': search.best_score_, 
+                'feature_result':
+                    {
+                        'method': self.feat_selector.get_method_nm(),
+                        'selected_features': self.feat_selector.feature_names_in_,
+                        'featuer_scores': self.feat_selector.scores_
+                     }
+                }
             
             # save the best params
             self.save_json(self.best_params, BEST_PARMAS_PATH)
@@ -347,7 +356,17 @@ class Benchmark:
                     model = self.model_tables[nm]
                     cv_scores = self._run_cv(model, **params)
                     avg_scores = {k: v.mean() for k, v in cv_scores.items()}
-                    results[nm] = {"cv_avg_scores": avg_scores, "params": params}
+                    
+                    results[nm] = {
+                        "cv_avg_scores": avg_scores, 
+                        "params": params,
+                        'feature_result':
+                            {
+                                'method': self.feat_selector.get_method_nm(),
+                                'selected_features': self.feat_selector.feature_names_in_,
+                                'featuer_scores': self.feat_selector.scores_
+                            }
+                        }
                     self.logger.info(f'Finished running benchmark on {nm}')
                     
                 else:

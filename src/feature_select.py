@@ -24,16 +24,16 @@ class FeatureSelector:
         'mutual_info_classif': mutual_info_classif,
         'chi2': chi2
     }
-    def __init__(self, method=None, **kwargs) -> None:
-        self.method = method
+    def __init__(self, method_nm=None, **kwargs) -> None:
+        self.method_nm = method_nm
         
-        if method is not None:
-            self._method = self.methods[method]
+        if method_nm is not None:
+            self._method = self.methods[method_nm]
             
     def select(self, X, y, k):
         # select k best features
         
-        if self.method is None:
+        if self.method_nm is None:
             return X
         
         selected = SelectKBest(score_func=self._method, k=k).fit(X, y)
@@ -41,6 +41,9 @@ class FeatureSelector:
         return selected.transform(X)
     
     def run(self, X, y, k):
-        # alias for select method
+        # alias for select method_nm
         return self.select(X, y, k)
+    
+    def method_nm(self):
+        return self.method_nm if self.method_nm is not None else 'None'
     
