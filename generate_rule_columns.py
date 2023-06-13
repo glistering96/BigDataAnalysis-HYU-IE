@@ -10,13 +10,13 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 
 TEXT_COL = ['title', 'company_profile', 'description', 'requirements', 'benefits']
+URL_COL = ['company_profile', 'description', 'benefits']
 
 
 def add_rule_url(df):
     url_re = 'https?:\/\/\S+|www\.\S+'
-    target_col = ['company_profile', 'description', 'benefits']
 
-    for col in target_col:
+    for col in URL_COL:
         df[f'url_count_{col}'] = df[col].apply(lambda txt: len(re.findall(url_re, txt)) if txt is not np.nan else 0)
 
 
@@ -123,8 +123,8 @@ def text_c_to_j(text):
 def tfidf_keyword_count(df_c, df_s, col, topn, target_is_fake=True):
     k_list = tfidf_stemmed_keywords(df_c, col, topn, target_is_fake=target_is_fake)
 
-    f_ratio = (df_c['fraudulent'] == 1).sum() / df_c.shape
-    r_ratio = (df_c['fraudulent'] == 0).sum() / df_c.shape
+    f_ratio = (df_c['fraudulent'] == 1).sum() / df_c.shape[0]
+    r_ratio = (df_c['fraudulent'] == 0).sum() / df_c.shape[0]
 
     f_count = []
     r_count = []
@@ -154,6 +154,13 @@ def tfidf_select_eff_keywords(df_c, df_s, col, topn, percent=0.9, target_is_fake
     return eff_k_list
 
 
+def count_keyword(txt, k_list):
+    count = 0
+    for keyword in k_list:
+        count += txt.count(keyword)
+    return count
+
+
 def add_rule_keywords(df):
     df_cleaned = df.copy(deep=True)
     for col in TEXT_COL:
@@ -164,17 +171,18 @@ def add_rule_keywords(df):
         df_stemmed[col] = df_stemmed[col].apply(lambda x: text_c_to_j(x))
 
     for col in TEXT_COL:
-        dff_k_list = tfidf_select_eff_keywords(df_cleaned, df_stemmed, col, topn=30, percent=0.9)
-        print(dff_k_list)
+        eff_k_list = tfidf_select_eff_keywords(df_cleaned, df_stemmed, col, topn=30, percent=0.8)
+        df[f'keyword_count_{col}'] = df_stemmed[col].apply(lambda x: count_keyword(x, eff_k_list))
 
 
 if __name__ == '__main__':
     _f_name = 'fake_job_postings.csv'
+    _new_f_name = 'fake_job_postings_rule_added.csv'
     _origin_path = f'./data/{_f_name}'
 
-    for _chained in ['chained']:
-        _path = f'./data/imputed/words/{_chained}'
-        _f_path = f'{_path}/{_f_name}'
+    for _chained in ['chained', 'unchained']:
+        _path = f'./data/imputed/words/{_chained}/'
+        _f_path = _path + _f_name
 
         origin_df = pd.read_csv(_origin_path)
         imputed_df = pd.read_csv(_f_path)
@@ -183,4 +191,17 @@ if __name__ == '__main__':
         add_rule_url(imputed_df)
         add_rule_keywords(imputed_df)
 
+        imputed_df.to_csv(_path + _new_f_name, sep=',', na_rep=np.nan, mode='w+')
+        for col in URL_COL:
+            print(f'url_count_{col} nonzero ratio')
+            print((imputed_df[f'url_count_{col}'] != 0).sum() / imputed_df.shape[0] * 100)
+            print(f'url_count_{col} nonzero and fake ratio')
+            print(imputed_df['fraudulent'][imputed_df[f'url_count_{col}'] != 0].sum() / (imputed_df[f'url_count_{col}'] != 0).sum() * 100)
+            print()
 
+        for col in TEXT_COL:
+            print(f'keyword_count_{col} nonzero ratio')
+            print((imputed_df[f'keyword_count_{col}'] != 0).sum() / imputed_df.shape[0] * 100)
+            print(f'keyword_count_{col} nonzero and fake ratio')
+            print(imputed_df['fraudulent'][imputed_df[f'keyword_count_{col}'] != 0].sum() / (imputed_df[f'keyword_count_{col}'] != 0).sum() * 100)
+            print()
