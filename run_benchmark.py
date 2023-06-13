@@ -31,7 +31,7 @@ def main():
         
         benchmark = Benchmark(df,
                                 sample_method=_sample_method, 
-                                logging_nm= f'{_chained}_{_sample_method}_{_rule_txt}_{_feature_select}',
+                                logging_nm= f'result/{_chained}_{_sample_method}_{_rule_txt}_{_feature_select}',
                                 feat_select_method=_feature_select,
                                 label_nm='fraudulent',
                                 skip_model=['cb']
