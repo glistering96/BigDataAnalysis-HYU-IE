@@ -46,7 +46,6 @@ class Benchmark:
     
     def __init__(self, 
                  imputed,
-                 original,
                  logging_nm='benchmark', 
                  label_nm='fradulent',
                  scoring={'precision': 'precision', 'recall': 'recall', 'f1': 'f1', "AUC": "roc_auc"},
@@ -66,7 +65,6 @@ class Benchmark:
                  num_feat_to_sel : Union[int, float] = 0.5,
                  ) -> None:
         self.imputed = imputed
-        self.original = original
         self.label_nm = label_nm
         self.cv = cv
         self.base_path = f'{self.BASEDIR}/{logging_nm}'
@@ -82,7 +80,7 @@ class Benchmark:
         self.text_cols = text_cols
 
         self.n_jobs = 4 if os.name == 'nt' else -1
-        self.use_gpu = self._test_xgb_finds_gpu()
+        self.use_gpu = self._test_xgb_finds_gpu()   # must be called before ray.init()
         
         self.sampler = Sampler(method=sample_method, **sampler_kwargs)
         
@@ -90,11 +88,11 @@ class Benchmark:
         self.num_feat_to_sel = num_feat_to_sel
         
         ray.init(
-                num_cpus=os.cpu_count()-1,
+                num_cpus=min(os.cpu_count()-1, self.n_jobs),  # if resouce is not enough, reduce this number
                 num_gpus=1 if self.use_gpu else 0
         )
     
-    def preprocess(self, imputed_df, original_df, make_dummies=True, drop_text=True):
+    def preprocess(self, imputed_df, make_dummies=True, drop_text=True):
         df = imputed_df.copy(deep=True)
    
         if drop_text:
@@ -102,16 +100,29 @@ class Benchmark:
         
         if make_dummies:
             df = pd.get_dummies(df, columns=self.cat_cols)
-            
-        # concat fradulent col to imputed_df from original_df
-        df['fraudulent'] = original_df['fraudulent']
+    
+        X, y = df.drop(self.label_nm, axis=1), df[self.label_nm]
         
-        return df
+        k = int(X.shape[1] * self.num_feat_to_sel) if isinstance(self.num_feat_to_sel, float) else self.num_feat_to_sel
+        
+        if k > X.shape[1]:
+            self.logger.warning(f'k is larger than the number of features. k is set to half of the features {X.shape[1]//2}')
+            k = X.shape[1]//2
+        
+        self.logger.info(f"Running a feature selector: {self.feat_selector.method}")
+        
+        X_filtered = self.feat_selector.run(X, y, k)
+        self.logger.info(f"Running a feature selector finished.")
+        
+        self.logger.info(f"Running a sampler: {self.sampler.method}")
+        X_sampled, y_sampled = self.sampler.run(X_filtered, y)
+        self.logger.info(f"Running a sampler finished.")
+            
+        return X_sampled, y_sampled
 
 
-    def _run_cv(self, model, **kwargs):
-        data = self.preprocess(self.imputed, self.original)
-        X, y = data.drop(self.label_nm, axis=1), data[self.label_nm]
+    def _run_cv(self, model, make_dummies, drop_text, **kwargs):
+        X, y = self.preprocess(self.imputed, make_dummies=make_dummies, drop_text=drop_text)
         
         cv = StratifiedKFold(n_splits=self.cv, shuffle=True, random_state=self.seed)
         
@@ -158,7 +169,49 @@ class Benchmark:
             return True
         except:
             return False
+    
+    def _get_preprocessing_rule(self, model_nm):
+        # create and return a preprocessing rule for a given model
+        _drop_text = True
+        _make_dummies = True
+        
+        if model_nm == 'cb':
+            # if you want to use text data in the catboost, set _drop_text to False
+            _make_dummies = False   # catboost does not need dummies
             
+        return _drop_text, _make_dummies    
+
+    
+    def _get_estimator(self, model_nm, param_range):
+        # Although you can manually add parameters by modifying this method, we do not recommend it.
+        # One should istead give a dictionary of parameters to the param_range argument of the run method by modifynig the predefined parameter json file.
+        
+        # set the number of jobs for parameter search
+        search_n_jobs = 8 if self.n_jobs == -1 else self.n_jobs
+        
+        # check if random state attribute exists in the model class
+        if 'random_state' in self.model_tables[model_nm]().get_params().keys():
+            model = self.model_tables[model_nm](random_state=self.seed)
+            
+        else:
+            model = self.model_tables[model_nm]()
+            
+        if model_nm == 'xgb':
+            if self.use_gpu:
+                param_range['tree_method'] = ['gpu_hist']
+                param_range['gpu_id'] = [0]
+                
+            param_range['scale_pos_weight'] = [len(self.imputed[self.imputed[self.label_nm] == 0]) / self.imputed.shape[0]] # scale_pos_weight: negative ratio of label
+            search_n_jobs = 2
+                
+            if model_nm == 'cb':
+                param_range['max_depth'] = (3, 16)
+                param_range['od_wait'] = [10]                
+                search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
+                model.set_params(cat_features=self.cat_cols)
+                
+        return model, search_n_jobs
+    
     def _search_best_params(self, param_range, skip_param_search, **kwargs):
         model_param_range = self._get_param_ranges(param_range, skip_param_search)
         BEST_PARMAS_PATH = f'{self.base_path}/{self._score_of_interest}/best_params.json'
@@ -170,40 +223,14 @@ class Benchmark:
             self.logger.info(f'{BEST_PARMAS_PATH} does not exist. Start searching best params...')
             self.best_params = {}
             
-        search_n_jobs = 8 if self.n_jobs == -1 else self.n_jobs
+
         
-        for nm, param_range in model_param_range.items():
-            
-            _drop_text = True
-            _make_dummies = True
-            
-            # check if random state attribute exists in the model class
-            if 'random_state' in self.model_tables[nm]().get_params().keys():
-                model = self.model_tables[nm](random_state=self.seed)
-                
-            else:
-                model = self.model_tables[nm]()
-            
+        for nm, param_range in model_param_range.items():           
             if nm in self.best_params.keys():
                 self.logger.info(f'{nm} already has best params. Skip searching best params.')
                 continue
             
-            if nm == 'xgb':
-                if self.use_gpu:
-                    param_range['tree_method'] = ['gpu_hist']
-                    param_range['gpu_id'] = [0]
-                    
-                param_range['scale_pos_weight'] = [len(self.original[self.original[self.label_nm] == 0]) / self.original.shape[0]] # scale_pos_weight: negative ratio of label
-                search_n_jobs = 2
-                
-            if nm == 'cb':
-                param_range['max_depth'] = (3, 16)
-                param_range['od_wait'] = [10]                
-                search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
-                model.set_params(cat_features=self.cat_cols)
-                
-                # _drop_text = True  # if you want to run the model also with text when using catboost, set drop_text to False
-                _make_dummies = False   # catboost does not need dummies
+            model, search_n_jobs = self._get_estimator(nm, param_range)
             
             self.logger.info(f'Searching best params for {nm} with {search_n_jobs} jobs...')
             
@@ -221,27 +248,10 @@ class Benchmark:
                 use_gpu=self.use_gpu    
             )
             
-
-            data = self.preprocess(self.imputed, self.original, drop_text=_drop_text, make_dummies=_make_dummies)
-        
-            X, y = data.drop(self.label_nm, axis=1), data[self.label_nm]
-            
-            k = int(X.shape[1] * self.num_feat_to_sel) if isinstance(self.num_feat_to_sel, float) else self.num_feat_to_sel
-            
-            if k > X.shape[1]:
-                self.logger.warning(f'k is larger than the number of features. k is set to half of the features {X.shape[1]//2}')
-                k = X.shape[1]//2
-            
-            self.logger.info(f"Running a feature selector: {self.feat_selector.method}")
-            
-            X_filtered = self.feat_selector.run(X, y, k)
-            self.logger.info(f"Running a feature selector finished.")
-            
-            self.logger.info(f"Running a sampler: {self.sampler.method}")
-            X_sampled, y_sampled = self.sampler.run(X_filtered, y)
-            self.logger.info(f"Running a sampler finished.")
-            
-            search.fit(X_sampled, y_sampled)
+            _drop_text, _make_dummies = self._get_preprocessing_rule(nm)
+            X, y = self.preprocess(self.imputed, drop_text=_drop_text, make_dummies=_make_dummies)
+                    
+            search.fit(X, y)
             
             if self.save_cv_result:
                 cv_result = search.cv_results_
