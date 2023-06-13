@@ -38,7 +38,7 @@ def main():
         )
 
         results = benchmark.run(model_param, skip_param_search=False)
-    print(results)
+        print(results)
 
 
 if __name__ == '__main__':
