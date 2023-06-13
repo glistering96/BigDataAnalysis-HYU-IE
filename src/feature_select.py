@@ -44,6 +44,6 @@ class FeatureSelector:
         # alias for select method_nm
         return self.select(X, y, k)
     
-    def method_nm(self):
+    def get_method_nm(self):
         return self.method_nm if self.method_nm is not None else 'None'
     
