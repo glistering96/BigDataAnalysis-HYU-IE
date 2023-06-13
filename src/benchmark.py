@@ -91,7 +91,7 @@ class Benchmark:
         self.num_feat_to_sel = num_feat_to_sel
         
         ray.init(
-                num_cpus=min(os.cpu_count()-1, self.n_jobs),  # if resouce is not enough, reduce this number
+                num_cpus=os.cpu_count()-2,  # if resouce is not enough, reduce this number
                 num_gpus=1 if self.use_gpu else 0
         )
     
