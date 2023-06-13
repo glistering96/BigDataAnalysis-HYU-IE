@@ -32,10 +32,10 @@ def main():
         benchmark = Benchmark(df,
                                 sample_method=_sample_method, 
                                 logging_nm= f'{_chained}_{_sample_method}_{_rule_txt}',
-                                feat_select_method=_feature_select
+                                feat_select_method=_feature_select,
                                 label_nm='fraudulent',
                                 skip_model=['cb']
-                                )
+        )
 
         results = benchmark.run(model_param, skip_param_search=False)
     print(results)
