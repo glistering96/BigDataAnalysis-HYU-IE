@@ -45,7 +45,7 @@ class Benchmark:
     BASEDIR = str(Path(__file__).parent)
     
     def __init__(self, 
-                 imputed,
+                 original_df,
                  logging_nm='benchmark', 
                  label_nm='fradulent',
                  scoring={'precision': 'precision', 'recall': 'recall', 'f1': 'f1', "AUC": "roc_auc"},
@@ -63,8 +63,10 @@ class Benchmark:
                  feat_select_kwargs={},
                  
                  num_feat_to_sel : Union[int, float] = 0.5,
+                 
+                 skip_model = []
                  ) -> None:
-        self.imputed = imputed
+        self.original_df = original_df
         self.label_nm = label_nm
         self.cv = cv
         self.base_path = f'{self.BASEDIR}/{logging_nm}'
@@ -74,6 +76,7 @@ class Benchmark:
         self.logger = init_logger({'level': 'INFO', 'name': logging_nm})
         self.seed = seed
         self.save_cv_result = save_cv_result
+        self.skip_model = skip_model
         self.best_params = {}
         
         self.cat_cols = cat_cols
@@ -92,9 +95,15 @@ class Benchmark:
                 num_gpus=1 if self.use_gpu else 0
         )
     
-    def preprocess(self, imputed_df, make_dummies=True, drop_text=True):
-        df = imputed_df.copy(deep=True)
-   
+    def preprocess(self, original_df, make_dummies=True, drop_text=True):
+        df = original_df.copy(deep=True)
+        
+        for text_col in self.text_cols:
+            df[text_col] = df[text_col].fillna('Unspecified')
+            
+        for cat_col in self.cat_cols:
+            df[cat_col] = df[cat_col].fillna('Unspecified')
+            
         if drop_text:
             df = df.drop(self.text_cols, axis=1)
         
@@ -122,7 +131,7 @@ class Benchmark:
 
 
     def _run_cv(self, model, make_dummies, drop_text, **kwargs):
-        X, y = self.preprocess(self.imputed, make_dummies=make_dummies, drop_text=drop_text)
+        X, y = self.preprocess(self.original_df, make_dummies=make_dummies, drop_text=drop_text)
         
         cv = StratifiedKFold(n_splits=self.cv, shuffle=True, random_state=self.seed)
         
@@ -135,14 +144,14 @@ class Benchmark:
         
         return cv_scores
     
-    def save_json(self, imputed, path):
+    def save_json(self, original_df, path):
         _path = Path(path)
         
         if not _path.parent.exists():
             _path.parent.mkdir(parents=True)
             
         with open(_path, 'w') as f:
-            json.dump(imputed, f, indent=4)
+            json.dump(original_df, f, indent=4)
             
     def load_json(self, path):
         _path = Path(path)
@@ -151,9 +160,9 @@ class Benchmark:
             raise FileNotFoundError(f'{path} does not exist.')
             
         with open(_path, 'r') as f:
-            imputed = json.load(f)
+            original_df = json.load(f)
             
-        return imputed
+        return original_df
     
     def _test_xgb_finds_gpu(capsys):
         """Check if XGBoost finds the GPU."""
@@ -201,7 +210,7 @@ class Benchmark:
                 param_range['tree_method'] = ['gpu_hist']
                 param_range['gpu_id'] = [0]
                 
-            param_range['scale_pos_weight'] = [len(self.imputed[self.imputed[self.label_nm] == 0]) / self.imputed.shape[0]] # scale_pos_weight: negative ratio of label
+            param_range['scale_pos_weight'] = [len(self.original_df[self.original_df[self.label_nm] == 0]) / self.original_df.shape[0]] # scale_pos_weight: negative ratio of label
             search_n_jobs = 2
                 
             if model_nm == 'cb':
@@ -222,12 +231,15 @@ class Benchmark:
         except FileNotFoundError:
             self.logger.info(f'{BEST_PARMAS_PATH} does not exist. Start searching best params...')
             self.best_params = {}
-            
 
         
         for nm, param_range in model_param_range.items():           
             if nm in self.best_params.keys():
                 self.logger.info(f'{nm} already has best params. Skip searching best params.')
+                continue
+            
+            if nm in self.skip_model:
+                self.logger.info(f'{nm} is in the skip list. Skip searching best params.')
                 continue
             
             model, search_n_jobs = self._get_estimator(nm, param_range)
@@ -249,7 +261,7 @@ class Benchmark:
             )
             
             _drop_text, _make_dummies = self._get_preprocessing_rule(nm)
-            X, y = self.preprocess(self.imputed, drop_text=_drop_text, make_dummies=_make_dummies)
+            X, y = self.preprocess(self.original_df, drop_text=_drop_text, make_dummies=_make_dummies)
                     
             search.fit(X, y)
             
@@ -326,7 +338,11 @@ class Benchmark:
         for nm, params in self.best_params.items():
             try:
                 if nm in self.model_tables.keys() and nm not in results.keys():
-                    # only run if the model is defined and not in the resultss
+                    if nm in self.skip_model:
+                        self.logger.info(f'{nm} is in the skip list. Skip final evaluation.')
+                        continue
+                    
+                    # only run if the model is defined and not in the results
                     self.logger.info(f'Running benchmark on {nm} with params {params}')
                     model = self.model_tables[nm]
                     cv_scores = self._run_cv(model, **params)
@@ -353,13 +369,13 @@ if __name__ == '__main__':
     import pandas as pd
     import numpy as np
     
-    imputed = pd.DataFrame(np.random.randint(0, 100, size=(1000, 4)), columns=list('ABCD'))
-    imputed['fradulent'] = np.random.randint(0, 2, size=1000)
+    original_df = pd.DataFrame(np.random.randint(0, 100, size=(1000, 4)), columns=list('ABCD'))
+    original_df['fradulent'] = np.random.randint(0, 2, size=1000)
     
     # load the predefined parameter ranges
-    param_range = "./imputed/param_range.json"
+    param_range = "./original_df/param_range.json"
     
-    bm = Benchmark(imputed, 
+    bm = Benchmark(original_df, 
                    label_nm='fradulent', cv=5, 
                    logging_nm='debug')
     
