@@ -278,8 +278,8 @@ class Benchmark:
                 'feature_result':
                     {
                         'method': self.feat_selector.get_method_nm(),
-                        'selected_features': self.feat_selector.feature_names_in_,
-                        'featuer_scores': self.feat_selector.scores_
+                        'selected_features': self.feat_selector.get_feature_names(),
+                        'featuer_scores': self.feat_selector.get_feature_score()
                      }
                 }
             
@@ -362,8 +362,8 @@ class Benchmark:
                         'feature_result':
                             {
                                 'method': self.feat_selector.get_method_nm(),
-                                'selected_features': self.feat_selector.feature_names_in_,
-                                'featuer_scores': self.feat_selector.scores_
+                                'selected_features': self.feat_selector.get_feature_names(),
+                                'featuer_scores': self.feat_selector.get_feature_score()
                             }
                         }
                     self.logger.info(f'Finished running benchmark on {nm}')

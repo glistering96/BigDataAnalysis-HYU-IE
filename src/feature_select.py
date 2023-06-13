@@ -16,6 +16,7 @@ we just give it a chane to see if it works.
 
 """
 from sklearn.feature_selection import SelectKBest, mutual_info_classif, chi2, f_classif
+import numpy as np
 
 
 class FeatureSelector:
@@ -29,6 +30,8 @@ class FeatureSelector:
         
         if method_nm is not None:
             self._method = self.methods[method_nm]
+        
+        self.fitted_model = None
             
     def select(self, X, y, k):
         # select k best features
@@ -36,9 +39,31 @@ class FeatureSelector:
         if self.method_nm is None:
             return X
         
-        selected = SelectKBest(score_func=self._method, k=k).fit(X, y)
+        self.fitted_model = SelectKBest(score_func=self._method, k=k)
+        selected = self.fitted_model.fit(X, y)
         
         return selected.transform(X)
+    
+    def get_feature_score(self):
+        if self.method_nm is None:
+            return None
+        
+        else:
+            scores = self.fitted_model.scores_
+            
+        if isinstance(scores, np.ndarray):
+            return scores.tolist()
+    
+    def get_feature_names(self):
+        if self.method_nm is None:
+            return None
+        
+        else:
+            nms = self.fitted_model.feature_names_in_
+            
+        if isinstance(nms, np.ndarray):
+            return nms.tolist()
+            
     
     def run(self, X, y, k):
         # alias for select method_nm
