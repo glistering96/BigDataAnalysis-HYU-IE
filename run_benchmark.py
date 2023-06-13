@@ -38,8 +38,6 @@ def main():
         )
 
         results = benchmark.run(model_param, skip_param_search=False)
-        print(results)
-
 
 if __name__ == '__main__':
     main()
