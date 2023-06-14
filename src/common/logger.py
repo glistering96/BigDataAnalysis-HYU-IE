@@ -43,7 +43,7 @@ def init_logger(config):
     # file handler
     file_nm = config['name']
     cur_time = time.strftime("%Y%m%d-%H%M")
-    log_path = Path(f'{BASEDIR}/{file_nm}/logs')
+    log_path = Path(f'{BASEDIR}/logs/{file_nm}')
     
     if '.txt' not in file_nm:
         file_nm = f'{file_nm}-{cur_time}.txt'

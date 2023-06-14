@@ -71,10 +71,12 @@ class Benchmark:
         self.original_df = original_df
         self.label_nm = label_nm
         self.cv = cv
-        self.base_path = f'{self.BASEDIR}/{logging_nm}'
-        self.result_path = f'{self.base_path}/results.json'
-        self.scoring = scoring
+        
         self._score_of_interest = 'AUC'
+        self.base_path = f'{self.BASEDIR}/benchmark_results/{logging_nm}'
+        self.result_path = f'{self.base_path}/results_{self._score_of_interest}.json'
+        self.scoring = scoring
+
         self.logger = init_logger({'level': 'INFO', 'name': logging_nm})
         self.seed = seed
         self.save_cv_result = save_cv_result
