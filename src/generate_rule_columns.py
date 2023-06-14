@@ -10,7 +10,6 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 from pathlib import Path
 
-
 TEXT_COL = ['title', 'company_profile', 'description', 'requirements', 'benefits']
 URL_COL = ['company_profile', 'description', 'benefits']
 
@@ -157,10 +156,10 @@ def tfidf_select_eff_keywords(df_c, df_s, col, topn, percent=0.9, target_is_fake
 
 
 def count_keyword(txt, k_list):
-    count = 0
+    count = False
     for keyword in k_list:
-        count += txt.count(keyword)
-    return count
+        count = count or keyword in txt
+    return 1 if count else 0
 
 
 def add_rule_keywords(df):
@@ -176,6 +175,7 @@ def add_rule_keywords(df):
         eff_k_list = tfidf_select_eff_keywords(df_cleaned, df_stemmed, col, topn=30, percent=0.8)
         df[f'keyword_count_{col}'] = df_stemmed[col].apply(lambda x: count_keyword(x, eff_k_list))
 
+
 def generate_features():
     _f_name = 'fake_job_postings.csv'
     _new_f_name = 'fake_job_postings_rule_added.csv'
@@ -186,9 +186,9 @@ def generate_features():
     for _chained in ['chained', 'unchained']:
         _path = f'{BASE_DIR}/data/imputed/words/{_chained}/'
         _f_path = _path + _f_name
-        
+
         imputed_df = pd.read_csv(_f_path)
-        
+
         # add 'fraudulent' column from the original if it does not exist
         if 'fradulent' not in imputed_df.columns:
             origin_df = pd.read_csv(_origin_path)
@@ -198,18 +198,19 @@ def generate_features():
         add_rule_keywords(imputed_df)
 
         imputed_df.to_csv(_path + _new_f_name, sep=',', na_rep=np.nan, mode='w+')
-        
+
         for col in URL_COL:
             print(f'url_count_{col} nonzero ratio')
             print((imputed_df[f'url_count_{col}'] != 0).sum() / imputed_df.shape[0] * 100)
             print(f'url_count_{col} nonzero and fake ratio')
-            print(imputed_df['fraudulent'][imputed_df[f'url_count_{col}'] != 0].sum() / (imputed_df[f'url_count_{col}'] != 0).sum() * 100)
+            print(imputed_df['fraudulent'][imputed_df[f'url_count_{col}'] != 0].sum() / (
+                        imputed_df[f'url_count_{col}'] != 0).sum() * 100)
             print()
 
         for col in TEXT_COL:
             print(f'keyword_count_{col} nonzero ratio')
             print((imputed_df[f'keyword_count_{col}'] != 0).sum() / imputed_df.shape[0] * 100)
             print(f'keyword_count_{col} nonzero and fake ratio')
-            print(imputed_df['fraudulent'][imputed_df[f'keyword_count_{col}'] != 0].sum() / (imputed_df[f'keyword_count_{col}'] != 0).sum() * 100)
+            print(imputed_df['fraudulent'][imputed_df[f'keyword_count_{col}'] != 0].sum() / (
+                        imputed_df[f'keyword_count_{col}'] != 0).sum() * 100)
             print()
-            
