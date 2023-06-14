@@ -103,15 +103,30 @@ class Benchmark:
     
     def preprocess(self, original_df, make_dummies=True, drop_text=True):
         df = original_df.copy(deep=True)
-                
-        for text_col in self.text_cols:
-            df[text_col] = df[text_col].fillna('Unspecified')
-            
+        
         for cat_col in self.cat_cols:
             df[cat_col] = df[cat_col].fillna('Unspecified')
-            
+                        
+        replace_edu_dict = {'Some High School Coursework': 'High School or equivalent',
+                            'Vocational - HS Diploma': 'High School or equivalent',
+                            'Vocational - Degree': 'High School or equivalent',
+                            'Vocational': 'High School or equivalent',
+                            'Some College Coursework Completed': "Bachelor's Degree",
+                            'Doctorate': "Professional",
+                            'nan': 'Unspecified'
+        }
+        
+        df['required_education'] = df.required_education.replace(replace_edu_dict)
+        
+        # only use the first part of the location
+        df['location'] = df['location'].apply(lambda x : str(x).split(',')[0])
+                                
         if drop_text:
             df = df.drop(self.text_cols, axis=1)
+            
+        else:
+            for text_col in self.text_cols:
+                df[text_col] = df[text_col].fillna('Unspecified')
         
         if make_dummies:
             df = pd.get_dummies(df, columns=self.cat_cols)
