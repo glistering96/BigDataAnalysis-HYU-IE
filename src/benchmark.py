@@ -82,6 +82,10 @@ class Benchmark:
         self.best_params = {}
         
         self.cat_cols = cat_cols
+        
+        if "department" in original_df.columns:
+            self.cat_cols.append("department")
+            
         self.text_cols = text_cols
 
         self.n_jobs = 4 if os.name == 'nt' else -1
@@ -99,7 +103,8 @@ class Benchmark:
     
     def preprocess(self, original_df, make_dummies=True, drop_text=True):
         df = original_df.copy(deep=True)
-        
+        to_drop = ['salary_range', 'job_id']
+                
         for text_col in self.text_cols:
             df[text_col] = df[text_col].fillna('Unspecified')
             
@@ -208,6 +213,9 @@ class Benchmark:
             
         elif model_nm == 'cb':
             search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
+            
+        elif model_nm == 'knn':
+            search_n_jobs = 2   # too many jobs cause memory error for knn
             
         return search_n_jobs    
     
