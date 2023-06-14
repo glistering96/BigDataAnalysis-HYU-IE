@@ -96,10 +96,11 @@ class Benchmark:
         self.feat_selector = FeatureSelector(method_nm=feat_select_method, **feat_select_kwargs)
         self.num_feat_to_sel = num_feat_to_sel
         
-        ray.init(
-                num_cpus=os.cpu_count()-2,  # if resouce is not enough, reduce this number
-                num_gpus=1 if self.use_gpu else 0
-        )
+        if not ray.is_initialized():
+            ray.init(
+                    num_cpus=os.cpu_count()-2,  # if resouce is not enough, reduce this number
+                    num_gpus=1 if self.use_gpu else 0
+            )
     
     def preprocess(self, original_df, make_dummies=True, drop_text=True):
         df = original_df.copy(deep=True)
