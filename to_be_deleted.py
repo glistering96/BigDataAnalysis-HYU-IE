@@ -4,7 +4,7 @@ import pandas as pd
 data = pd.read_csv('./data/fake_job_postings.csv')
 
 # drop salaray_range
-data = data.drop(['salary_range'], axis=1)
+data = data.drop(['salary_range', 'job_id', 'department'], axis=1)
 
 
 # impute na with "Unsepecified" for all categorical columns

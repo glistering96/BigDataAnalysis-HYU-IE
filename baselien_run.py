@@ -31,7 +31,7 @@ def main():
         
         benchmark = Benchmark(df,
                                 sample_method=_sample_method, 
-                                logging_nm= f'baseline_no_imputation',
+                                logging_nm= f'baseline_no_imputation_{_feature_select}',
                                 feat_select_method=_feature_select,
                                 label_nm='fraudulent',
                                 skip_model=['cb']
