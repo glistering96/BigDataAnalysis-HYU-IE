@@ -103,7 +103,6 @@ class Benchmark:
     
     def preprocess(self, original_df, make_dummies=True, drop_text=True):
         df = original_df.copy(deep=True)
-        to_drop = ['salary_range', 'job_id']
                 
         for text_col in self.text_cols:
             df[text_col] = df[text_col].fillna('Unspecified')
