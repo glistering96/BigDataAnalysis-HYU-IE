@@ -6,7 +6,7 @@ from itertools import product
 # select one of methods in [None, random_over, random_under, smote] in the below variable.
 # adasyn, cluster_centroid is available but we do not consider these two here
 
-_sample_method = None # str type is required
+_sample_method = "random_over" # str type is required
 
 # SMOTE: yejoon
 # random_over: wonjun
@@ -31,7 +31,7 @@ def main():
             
         else:
             _path = f'./data/imputed/{_token}/{_chained}/fake_job_postings{_rule_txt}.csv'
-            logging_nm = f'imputation_{_chained}_{_feature_select}{_rule_txt}'
+            logging_nm = f'{_sample_method}/imputation_{_chained}_{_feature_select}{_rule_txt}'
         
         # read csv and pass it 
         df = pd.read_csv(_path)
