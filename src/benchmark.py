@@ -71,10 +71,12 @@ class Benchmark:
         self.original_df = original_df
         self.label_nm = label_nm
         self.cv = cv
-        self.base_path = f'{self.BASEDIR}/{logging_nm}'
-        self.result_path = f'{self.base_path}/results.json'
-        self.scoring = scoring
+        
         self._score_of_interest = 'AUC'
+        self.base_path = f'{self.BASEDIR}/benchmark_results/{logging_nm}'
+        self.result_path = f'{self.base_path}/results_{self._score_of_interest}.json'
+        self.scoring = scoring
+
         self.logger = init_logger({'level': 'INFO', 'name': logging_nm})
         self.seed = seed
         self.save_cv_result = save_cv_result
@@ -82,6 +84,10 @@ class Benchmark:
         self.best_params = {}
         
         self.cat_cols = cat_cols
+        
+        if "department" in original_df.columns:
+            self.cat_cols.append("department")
+            
         self.text_cols = text_cols
 
         self.n_jobs = 4 if os.name == 'nt' else -1
@@ -92,22 +98,38 @@ class Benchmark:
         self.feat_selector = FeatureSelector(method_nm=feat_select_method, **feat_select_kwargs)
         self.num_feat_to_sel = num_feat_to_sel
         
-        ray.init(
-                num_cpus=os.cpu_count()-2,  # if resouce is not enough, reduce this number
-                num_gpus=1 if self.use_gpu else 0
-        )
+        if not ray.is_initialized():
+            ray.init(
+                    num_cpus=os.cpu_count()-2,  # if resouce is not enough, reduce this number
+                    num_gpus=1 if self.use_gpu else 0
+            )
     
     def preprocess(self, original_df, make_dummies=True, drop_text=True):
         df = original_df.copy(deep=True)
         
-        for text_col in self.text_cols:
-            df[text_col] = df[text_col].fillna('Unspecified')
-            
         for cat_col in self.cat_cols:
             df[cat_col] = df[cat_col].fillna('Unspecified')
-            
+                        
+        replace_edu_dict = {'Some High School Coursework': 'High School or equivalent',
+                            'Vocational - HS Diploma': 'High School or equivalent',
+                            'Vocational - Degree': 'High School or equivalent',
+                            'Vocational': 'High School or equivalent',
+                            'Some College Coursework Completed': "Bachelor's Degree",
+                            'Doctorate': "Professional",
+                            'nan': 'Unspecified'
+        }
+        
+        df['required_education'] = df.required_education.replace(replace_edu_dict)
+        
+        # only use the first part of the location
+        df['location'] = df['location'].apply(lambda x : str(x).split(',')[0])
+                                
         if drop_text:
             df = df.drop(self.text_cols, axis=1)
+            
+        else:
+            for text_col in self.text_cols:
+                df[text_col] = df[text_col].fillna('Unspecified')
         
         if make_dummies:
             df = pd.get_dummies(df, columns=self.cat_cols)
@@ -208,6 +230,9 @@ class Benchmark:
             
         elif model_nm == 'cb':
             search_n_jobs = 1   # intentionally set to 1 because catboost runs really slow if parallel search is executed from the ray
+            
+        elif model_nm == 'knn':
+            search_n_jobs = 2   # too many jobs cause memory error for knn
             
         return search_n_jobs    
     
