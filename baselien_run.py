@@ -23,7 +23,6 @@ def main():
     # get the combination of chained, rule, feature_select
     
     for _chained, _rule, _feature_select in product(_chained_lst, _rule_lst, _feature_select_lst):
-        _rule = False
         _rule_txt = '_rule_added' if _rule else ''
         
         if _chained is None:
@@ -42,9 +41,7 @@ def main():
                                 logging_nm=logging_nm,
                                 feat_select_method=_feature_select,
                                 label_nm='fraudulent',
-                                cv=2,
-                                skip_model=['cb', 
-                                            'lr', 'rf', 'svm', 'knn', 'ada', 'gb', 'et', ]
+                                skip_model=['cb']
         )
 
         results = benchmark.run(model_param, skip_param_search=False)
