@@ -27,7 +27,7 @@ def main():
         
         if _chained is None:
             _path = f'./data/naive_impute/fake_job_postings.csv'
-            logging_nm = f'no_imputation_{_feature_select}'
+            logging_nm = f'{_sample_method}/no_imputation_{_feature_select}'
             
         else:
             _path = f'./data/imputed/{_token}/{_chained}/fake_job_postings{_rule_txt}.csv'

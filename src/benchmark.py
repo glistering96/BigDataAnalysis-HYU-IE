@@ -90,7 +90,7 @@ class Benchmark:
             
         self.text_cols = text_cols
 
-        self.n_jobs = 4 if os.name == 'nt' else -1
+        self.n_jobs = 4 if os.name == 'nt' else 4
         self.use_gpu = self._test_xgb_finds_gpu()   # must be called before ray.init()
         
         self.sampler = Sampler(method_nm=sample_method, **sampler_kwargs)
@@ -100,7 +100,7 @@ class Benchmark:
         
         if not ray.is_initialized():
             ray.init(
-                    num_cpus=os.cpu_count()-2,  # if resouce is not enough, reduce this number
+                    num_cpus=os.cpu_count()-3,  # if resouce is not enough, reduce this number
                     num_gpus=1 if self.use_gpu else 0
             )
     
