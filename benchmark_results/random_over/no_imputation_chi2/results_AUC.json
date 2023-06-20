@@ -1,0 +1,114 @@
+{
+    "rf": {
+        "cv_avg_scores": {
+            "fit_time": 28.4285649061203,
+            "score_time": 0.8634560108184814,
+            "test_precision": 0.9241073513537275,
+            "test_recall": 0.9426955596037722,
+            "test_f1": 0.933214579506557,
+            "test_AUC": 0.9837993478479181
+        },
+        "params": {
+            "n_estimators": 1000,
+            "max_depth": 38,
+            "min_samples_split": 2,
+            "min_samples_leaf": 2,
+            "criterion": "entropy"
+        }
+    },
+    "lr": {
+        "cv_avg_scores": {
+            "fit_time": 0.9550777912139893,
+            "score_time": 0.01079854965209961,
+            "test_precision": 0.8341039709441056,
+            "test_recall": 0.8918546911300534,
+            "test_f1": 0.8619670467644719,
+            "test_AUC": 0.9311995899107914
+        },
+        "params": {
+            "penalty": "l2",
+            "C": 100.0,
+            "solver": "newton-cholesky",
+            "max_iter": 100000
+        }
+    },
+    "svm": {
+        "cv_avg_scores": {
+            "fit_time": 39.934831619262695,
+            "score_time": 3.535483407974243,
+            "test_precision": 0.9513166597475688,
+            "test_recall": 0.9462213075739647,
+            "test_f1": 0.948743913228736,
+            "test_AUC": 0.9768889753581907
+        },
+        "params": {
+            "C": 64.0010148674404,
+            "kernel": "rbf"
+        }
+    },
+    "knn": {
+        "cv_avg_scores": {
+            "fit_time": 0.011325216293334961,
+            "score_time": 5.340246176719665,
+            "test_precision": 0.8871911156358327,
+            "test_recall": 0.9509238016484394,
+            "test_f1": 0.9177384919450031,
+            "test_AUC": 0.9777287871911096
+        },
+        "params": {
+            "n_neighbors": 13
+        }
+    },
+    "ada": {
+        "cv_avg_scores": {
+            "fit_time": 117.64429097175598,
+            "score_time": 1.4789733648300172,
+            "test_precision": 0.8304117602228848,
+            "test_recall": 0.8658760900306793,
+            "test_f1": 0.8477423049918211,
+            "test_AUC": 0.9307589183171038
+        },
+        "params": {
+            "n_estimators": 1000,
+            "learning_rate": 0.3
+        }
+    },
+    "et": {
+        "cv_avg_scores": {
+            "fit_time": 45.31069488525391,
+            "score_time": 1.1081859827041627,
+            "test_precision": 0.934586781200102,
+            "test_recall": 0.9379927892005187,
+            "test_f1": 0.936281163835379,
+            "test_AUC": 0.9844454097107411
+        },
+        "params": {
+            "n_estimators": 1000,
+            "max_depth": 50,
+            "min_samples_split": 30,
+            "min_samples_leaf": 2
+        }
+    },
+    "xgb": {
+        "cv_avg_scores": {
+            "fit_time": 21.430413842201233,
+            "score_time": 0.09762263298034668,
+            "test_precision": 0.9604285733231877,
+            "test_recall": 0.9264715716406536,
+            "test_f1": 0.9430906527811189,
+            "test_AUC": 0.9897060366142917
+        },
+        "params": {
+            "n_estimators": 1000,
+            "learning_rate": 0.3,
+            "max_depth": 50,
+            "min_child_weight": 2,
+            "reg_alpha": 0.001,
+            "reg_lambda": 0.1,
+            "gamma": 0.001,
+            "tree_method": "gpu_hist",
+            "gpu_id": 0,
+            "scale_pos_weight": 0.5
+        }
+    }
+}

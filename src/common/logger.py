@@ -41,19 +41,19 @@ def init_logger(config):
     logger.addHandler(ch)
     
     # file handler
-    file_nm = config['name']
-    log_path = Path(f'{BASEDIR}/logs')
+    # file_nm = config['name']
+    # log_path = Path(f'{BASEDIR}/logs')
     
-    if '.txt' not in file_nm:
-        file_nm = f'{file_nm}.txt'
+    # if '.txt' not in file_nm:
+    #     file_nm = f'{file_nm}.txt'
     
     
-    if not log_path.exists():
-        log_path.mkdir(parents=True)
+    # if not log_path.exists():
+    #     log_path.mkdir(parents=True)
         
-    fh = logging.FileHandler(f"{log_path}/{file_nm}")
-    fh.setFormatter(formatter)
-    logger.addHandler(fh)
+    # fh = logging.FileHandler(f"{log_path}/{file_nm}")
+    # fh.setFormatter(formatter)
+    # logger.addHandler(fh)
     
     return logger
     

@@ -143,11 +143,22 @@ class Benchmark:
             k = X.shape[1]//2
         
         self.logger.info(f"Running a feature selector: {self.feat_selector.get_method_nm()}")
-        X_filtered = self.feat_selector.run(X, y, k)
+        try:
+            X_filtered = self.feat_selector.run(X, y, k)
+            
+        except ValueError as e:
+            self.logger.warning(f"Feature selection failed. {e}")
+            X_filtered = X
+            
         self.logger.info(f"Running a feature selector finished.")
         
         self.logger.info(f"Running a sampler: {self.sampler.get_method_nm()}")
-        X_sampled, y_sampled = self.sampler.run(X_filtered, y)
+        try:
+            X_sampled, y_sampled = self.sampler.run(X_filtered, y)
+        
+        except ValueError as e:
+            self.logger.warning(f"Sampling failed. {e}")
+            X_sampled, y_sampled = X_filtered, y
         self.logger.info(f"Running a sampler finished.")
             
         return X_sampled, y_sampled
