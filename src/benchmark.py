@@ -90,7 +90,7 @@ class Benchmark:
             
         self.text_cols = text_cols
 
-        self.n_jobs = 4 if os.name == 'nt' else 4
+        self.n_jobs = 4 if os.name == 'nt' else 6
         self.use_gpu = self._test_xgb_finds_gpu()   # must be called before ray.init()
         
         self.sampler = Sampler(method_nm=sample_method, **sampler_kwargs)
@@ -156,7 +156,7 @@ class Benchmark:
             
         self.logger.info(f"Running a feature selector finished.")
         
-        if sample:
+        if sample is not None and sample is True:
             self.logger.info(f"Running a sampler: {self.sampler.get_method_nm()}")
             try:
                 X_sampled, y_sampled = self.sampler.run(X_filtered, y)

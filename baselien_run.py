@@ -18,11 +18,12 @@ def main():
 
     _chained_lst = [None, 'chained', 'unchained']
     _rule_lst = [False, True]
-    _feature_select_lst = ['mutual_info_classif', 'chi2']
+    _feature_select_lst = [None, 'mutual_info_classif', 'chi2']
+    _sample_method_lst = [None, 'random_over', 'random_under', 'smote']
     
     # get the combination of chained, rule, feature_select
     
-    for _chained, _rule, _feature_select in product(_chained_lst, _rule_lst, _feature_select_lst):
+    for _sample_method, _chained, _rule, _feature_select in product(_sample_method_lst, _chained_lst, _rule_lst, _feature_select_lst):
         _rule_txt = '_rule_added' if _rule else ''
         
         if _chained is None:
@@ -41,7 +42,7 @@ def main():
                                 logging_nm=logging_nm,
                                 feat_select_method=_feature_select,
                                 label_nm='fraudulent',
-                                skip_model=['cb']
+                                skip_model=['cb', 'svm', 'knn', 'ada', 'gb']
         )
 
         results = benchmark.run(model_param, skip_param_search=False)
