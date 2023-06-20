@@ -7,7 +7,7 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_validate, StratifiedKFold
 from sklearn.exceptions import FitFailedWarning
-
+from sklearn.metrics import auc, average_precision_score, f1_score, recall_score
 from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import HalvingGridSearchCV
 
@@ -104,9 +104,9 @@ class Benchmark:
                     num_gpus=1 if self.use_gpu else 0
             )
     
-    def preprocess(self, original_df, make_dummies=True, drop_text=True):
+    def preprocess(self, original_df, make_dummies=True, drop_text=True, sample=True):
         df = original_df.copy(deep=True)
-        
+                        
         for cat_col in self.cat_cols:
             df[cat_col] = df[cat_col].fillna('Unspecified')
                         
@@ -123,7 +123,10 @@ class Benchmark:
         
         # only use the first part of the location
         df['location'] = df['location'].apply(lambda x : str(x).split(',')[0])
-                                
+        
+        if "Unnamed: 0" in df.columns:
+            df = df.drop("Unnamed: 0", axis=1)
+        
         if drop_text:
             df = df.drop(self.text_cols, axis=1)
             
@@ -133,9 +136,10 @@ class Benchmark:
         
         if make_dummies:
             df = pd.get_dummies(df, columns=self.cat_cols)
-    
-        X, y = df.drop(self.label_nm, axis=1), df[self.label_nm]
-        
+       
+        X, X_test, y, y_test = train_test_split(df.drop(self.label_nm, axis=1), df[self.label_nm],
+                                                            random_state=self.seed, stratify=df[self.label_nm])
+                
         k = int(X.shape[1] * self.num_feat_to_sel) if isinstance(self.num_feat_to_sel, float) else self.num_feat_to_sel
         
         if k > X.shape[1]:
@@ -152,40 +156,40 @@ class Benchmark:
             
         self.logger.info(f"Running a feature selector finished.")
         
-        self.logger.info(f"Running a sampler: {self.sampler.get_method_nm()}")
-        try:
-            X_sampled, y_sampled = self.sampler.run(X_filtered, y)
-        
-        except ValueError as e:
-            self.logger.warning(f"Sampling failed. {e}")
-            X_sampled, y_sampled = X_filtered, y
-        self.logger.info(f"Running a sampler finished.")
+        if sample:
+            self.logger.info(f"Running a sampler: {self.sampler.get_method_nm()}")
+            try:
+                X_sampled, y_sampled = self.sampler.run(X_filtered, y)
             
-        return X_sampled, y_sampled
+            except ValueError as e:
+                self.logger.warning(f"Sampling failed. {e}")
+                X_sampled, y_sampled = X_filtered, y
+            self.logger.info(f"Running a sampler finished.")
+            
+        return X_sampled, y_sampled, X_test, y_test
 
 
-    def _run_cv(self, nm, make_dummies, drop_text, **params):
-        X, y = self.preprocess(self.original_df, make_dummies=make_dummies, drop_text=drop_text)
+    def _run_predict(self, nm, make_dummies, drop_text, **params):
+        X, y, x_test, y_test = self.preprocess(self.original_df, make_dummies=make_dummies, drop_text=drop_text, sample=False)
         
-        model = self._get_estimator(nm, params, y, is_for_search=False)
-        
-        cv = StratifiedKFold(n_splits=self.cv, shuffle=True, random_state=self.seed)
-        
+        model = self._get_estimator(nm, params, y, is_for_search=False)        
         model.set_params(**params)
         
+        model.fit(X, y)
+        
+        proba = model.predict_proba(x_test)[:, 1]
+        preds = model.predict(x_test)
+        
+        # calculate metrics
+        _auc = auc(y_test, proba)
+        _precision = average_precision_score(y_test, proba, average='micro')
+        _recall = recall_score(y_test, preds, average='micro')        
+        _f1_score = f1_score(y_test, preds, average='micro')
+        
+        scores = {'test_auc': _auc, 'test_precision': _precision, 'test_recall': _recall, 'test_f1': _f1_score}
         cv_jobs = self.n_jobs if nm != 'knn' else 1
         
-        if hasattr(model, 'n_jobs'):
-            model.set_params(n_jobs=-1)
-        
-        try:
-            cv_scores = cross_validate(model, X, y, cv=cv, scoring=self.scoring, n_jobs=cv_jobs)
-            
-        except FitFailedWarning as e:
-            self.logger.error(f'FitFailedWarning: {e}')
-            raise Exception(f'FitFailedWarning: {e}')
-        
-        return cv_scores
+        return scores
     
     def save_json(self, original_df, path):
         _path = Path(path)
@@ -311,7 +315,8 @@ class Benchmark:
             self.logger.info(f'Searching best params for {nm} with {search_n_jobs} jobs...')
             
             _drop_text, _make_dummies = self._get_preprocessing_rule(nm)
-            X, y = self.preprocess(self.original_df, drop_text=_drop_text, make_dummies=_make_dummies)
+            X, y, _, _ = self.preprocess(self.original_df, drop_text=_drop_text, make_dummies=_make_dummies)
+            # find the best params using only trainin dataset 
             model = self._get_estimator(nm, param_range, y, is_for_search=True)
             
             search = TuneSearchCV(
@@ -428,8 +433,7 @@ class Benchmark:
                     
                     # get prerprocessing rules
                     drop_text, make_dummies = self._get_preprocessing_rule(nm)
-                    cv_scores = self._run_cv(nm, drop_text=drop_text, make_dummies=make_dummies, **params)
-                    avg_scores = {k: v.mean() for k, v in cv_scores.items()}
+                    avg_scores = self._run_predict(nm, drop_text=drop_text, make_dummies=make_dummies, **params)
                     
                     results[nm] = {
                         "cv_avg_scores": avg_scores, 
