@@ -42,7 +42,7 @@ def main():
                                 logging_nm=logging_nm,
                                 feat_select_method=_feature_select,
                                 label_nm='fraudulent',
-                                skip_model=['cb', 'svm', 'knn', 'ada', 'gb']
+                                skip_model=['cb', 'svm', 'knn', 'ada', 'gb', ]
         )
 
         results = benchmark.run(model_param, skip_param_search=False)

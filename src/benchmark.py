@@ -104,7 +104,7 @@ class Benchmark:
                     num_gpus=1 if self.use_gpu else 0
             )
     
-    def preprocess(self, original_df, make_dummies=True, drop_text=True, sample=True):
+    def preprocess(self, original_df, make_dummies=True, drop_text=True, sample=True, select_feature=True, selected_features=None):        
         df = original_df.copy(deep=True)
                         
         for cat_col in self.cat_cols:
@@ -136,25 +136,36 @@ class Benchmark:
         
         if make_dummies:
             df = pd.get_dummies(df, columns=self.cat_cols)
-       
+            
+        if selected_features is not None:
+            df = df[selected_features + [self.label_nm]]
+            select_feature = False
+                
         X, X_test, y, y_test = train_test_split(df.drop(self.label_nm, axis=1), df[self.label_nm],
                                                             random_state=self.seed, stratify=df[self.label_nm])
-                
-        k = int(X.shape[1] * self.num_feat_to_sel) if isinstance(self.num_feat_to_sel, float) else self.num_feat_to_sel
         
-        if k > X.shape[1]:
-            self.logger.warning(f'k is larger than the number of features. k is set to half of the features {X.shape[1]//2}')
-            k = X.shape[1]//2
-        
-        self.logger.info(f"Running a feature selector: {self.feat_selector.get_method_nm()}")
-        try:
-            X_filtered = self.feat_selector.run(X, y, k)
+        if select_feature: 
+            k = int(X.shape[1] * self.num_feat_to_sel) if isinstance(self.num_feat_to_sel, float) else self.num_feat_to_sel
             
-        except ValueError as e:
-            self.logger.warning(f"Feature selection failed. {e}")
+            if k > X.shape[1]:
+                self.logger.warning(f'k is larger than the number of features. k is set to half of the features {X.shape[1]//2}')
+                k = X.shape[1]//2
+            
+            self.logger.info(f"Running a feature selector: {self.feat_selector.get_method_nm()}")
+        
+            try:
+                X_filtered = self.feat_selector.run(X, y, k)
+                
+            except ValueError as e:
+                self.logger.warning(f"Feature selection failed. {e}")
+                X_filtered = X
+                
+            self.logger.info(f"Running a feature selector finished.")
+            
+        else:
             X_filtered = X
             
-        self.logger.info(f"Running a feature selector finished.")
+
         
         if sample is not None and sample is True:
             self.logger.info(f"Running a sampler: {self.sampler.get_method_nm()}")
@@ -166,32 +177,10 @@ class Benchmark:
             
             self.logger.info(f"Running a sampler finished.")
             
-        X_sampled, y_sampled = X_filtered, y
+        else:
+            X_sampled, y_sampled = X_filtered, y
             
         return X_sampled, y_sampled, X_test, y_test
-
-
-    def _run_predict(self, nm, make_dummies, drop_text, **params):
-        X, y, x_test, y_test = self.preprocess(self.original_df, make_dummies=make_dummies, drop_text=drop_text, sample=False)
-        
-        model = self._get_estimator(nm, params, y, is_for_search=False)        
-        model.set_params(**params)
-        
-        model.fit(X, y)
-        
-        proba = model.predict_proba(x_test)[:, 1]
-        preds = model.predict(x_test)
-        
-        # calculate metrics
-        _auc = auc(y_test, proba)
-        _precision = average_precision_score(y_test, proba, average='micro')
-        _recall = recall_score(y_test, preds, average='micro')        
-        _f1_score = f1_score(y_test, preds, average='micro')
-        
-        scores = {'test_auc': _auc, 'test_precision': _precision, 'test_recall': _recall, 'test_f1': _f1_score}
-        cv_jobs = self.n_jobs if nm != 'knn' else 1
-        
-        return scores
     
     def save_json(self, original_df, path):
         _path = Path(path)
@@ -400,6 +389,33 @@ class Benchmark:
                 
         return model_param_range
     
+    def _run_predict(self, nm, make_dummies, drop_text, selected_features, **params):
+        X, y, x_test, y_test = self.preprocess(self.original_df, make_dummies=make_dummies, drop_text=drop_text, sample=False, select_feature=False, selected_features=selected_features)
+        
+        model = self._get_estimator(nm, params, y, is_for_search=False)        
+        model.set_params(**params)
+        
+        model.fit(X, y)
+        
+        proba = model.predict_proba(x_test)[:, 1]
+        preds = model.predict(x_test)
+        
+        # calculate metrics
+        try:
+            _auc = auc(y_test, proba)
+            
+        except ValueError as e:
+            _auc = f"not able to calculate auc: {e}"
+            
+        _precision = average_precision_score(y_test, proba, average='micro')
+        _recall = recall_score(y_test, preds, average='micro')        
+        _f1_score = f1_score(y_test, preds, average='micro')
+        
+        scores = {'test_auc': _auc, 'test_precision': _precision, 'test_recall': _recall, 'test_f1': _f1_score}
+        cv_jobs = self.n_jobs if nm != 'knn' else 1
+        
+        return scores
+    
     def run(self, param_range: Union[dict, str], skip_param_search=False):
         # models: {model_nm: model_params, ...}
         
@@ -418,44 +434,40 @@ class Benchmark:
         
         for nm, best_param_result in self.best_params.items():
             params = best_param_result['params']
+            selected_feature_lst = best_param_result['feature_result']['selected_features']
             
-            try:
-                if nm in self.model_tables.keys():
-                    if nm in self.skip_model:
-                        self.logger.info(f'{nm} is in the skip list. Skip final evaluation.')
-                        continue
-                    
-                    if nm in results.keys() and "cv_avg_scores" in results[nm]:
-                        # if the result of the model already exists and the values are not related with errors, skip the final evaluation
-                        self.logger.info(f'{nm} is in the previous results. Skip final evaluation.')
-                        continue
-                    
-                    # only run if the model is defined and not in the results
-                    self.logger.info(f'Running benchmark on {nm} with params {params}')
-                    
-                    # get prerprocessing rules
-                    drop_text, make_dummies = self._get_preprocessing_rule(nm)
-                    avg_scores = self._run_predict(nm, drop_text=drop_text, make_dummies=make_dummies, **params)
-                    
-                    results[nm] = {
-                        "cv_avg_scores": avg_scores, 
-                        "params": params,
-                        # 'feature_result':
-                        #     {
-                        #         'method': self.feat_selector.get_method_nm(),
-                        #         'selected_features': self.feat_selector.get_feature_names(),
-                        #         'featuer_scores': self.feat_selector.get_feature_score()
-                        #     }
-                        }
-                    self.logger.info(f'Finished running benchmark on {nm}')
-                    
-                else:
-                    results[nm] = 'Undefined'
-                    
-            except Exception as e:
-                results[nm] = str(e)
-                self.logger.error(f'Error running benchmark on {nm}: {e}')
+            if nm in self.model_tables.keys():
+                if nm in self.skip_model:
+                    self.logger.info(f'{nm} is in the skip list. Skip final evaluation.')
+                    continue
                 
+                if nm in results.keys() and "cv_avg_scores" in results[nm]:
+                    # if the result of the model already exists and the values are not related with errors, skip the final evaluation
+                    self.logger.info(f'{nm} is in the previous results. Skip final evaluation.')
+                    continue
+                
+                # only run if the model is defined and not in the results
+                self.logger.info(f'Running benchmark on {nm} with params {params}')
+                
+                # get prerprocessing rules
+                drop_text, make_dummies = self._get_preprocessing_rule(nm)
+                avg_scores = self._run_predict(nm, drop_text=drop_text, make_dummies=make_dummies, selected_features=selected_feature_lst, **params)
+                
+                results[nm] = {
+                    "cv_avg_scores": avg_scores, 
+                    "params": params,
+                    # 'feature_result':
+                    #     {
+                    #         'method': self.feat_selector.get_method_nm(),
+                    #         'selected_features': self.feat_selector.get_feature_names(),
+                    #         'featuer_scores': self.feat_selector.get_feature_score()
+                    #     }
+                    }
+                self.logger.info(f'Finished running benchmark on {nm}')
+                
+            else:
+                results[nm] = 'Undefined'
+                    
             gc.collect()
             
             # save intermediate results
