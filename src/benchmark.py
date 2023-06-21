@@ -7,7 +7,7 @@ from sklearn.svm import SVC
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import train_test_split, GridSearchCV, cross_validate, StratifiedKFold
 from sklearn.exceptions import FitFailedWarning
-from sklearn.metrics import auc, average_precision_score, f1_score, recall_score
+from sklearn.metrics import average_precision_score, f1_score, recall_score, roc_auc_score
 from sklearn.experimental import enable_halving_search_cv
 from sklearn.model_selection import HalvingGridSearchCV
 
@@ -402,7 +402,7 @@ class Benchmark:
         
         # calculate metrics
         try:
-            _auc = auc(y_test, proba)
+            _auc = roc_auc_score(y_test, proba)
             
         except ValueError as e:
             _auc = f"not able to calculate auc: {e}"
