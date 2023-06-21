@@ -1,0 +1,65 @@
+{
+    "rf": {
+        "params": {
+            "n_estimators": 1000,
+            "max_depth": 50,
+            "min_samples_split": 2,
+            "min_samples_leaf": 2,
+            "criterion": "entropy"
+        },
+        "score": 0.9894140743998191,
+        "feature_result": {
+            "method": "None",
+            "selected_features": null,
+            "featuer_scores": null
+        }
+    },
+    "lr": {
+        "params": {
+            "penalty": "l2",
+            "C": 93.98830663118801,
+            "solver": "newton-cholesky",
+            "max_iter": 100000
+        },
+        "score": 0.932747104735606,
+        "feature_result": {
+            "method": "None",
+            "selected_features": null,
+            "featuer_scores": null
+        }
+    },
+    "et": {
+        "params": {
+            "n_estimators": 1000,
+            "max_depth": 43,
+            "min_samples_split": 28,
+            "min_samples_leaf": 2
+        },
+        "score": 0.9901361093640982,
+        "feature_result": {
+            "method": "None",
+            "selected_features": null,
+            "featuer_scores": null
+        }
+    },
+    "xgb": {
+        "params": {
+            "n_estimators": 100,
+            "learning_rate": 0.26392240602282374,
+            "max_depth": 50,
+            "min_child_weight": 2,
+            "reg_alpha": 0.001,
+            "reg_lambda": 0.1,
+            "gamma": 0.001,
+            "tree_method": "gpu_hist",
+            "gpu_id": 0,
+            "scale_pos_weight": 0.5
+        },
+        "score": 0.9944748295024617,
+        "feature_result": {
+            "method": "None",
+            "selected_features": null,
+            "featuer_scores": null
+        }
+    }
+}
