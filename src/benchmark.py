@@ -163,8 +163,10 @@ class Benchmark:
             
             except ValueError as e:
                 self.logger.warning(f"Sampling failed. {e}")
-                X_sampled, y_sampled = X_filtered, y
+            
             self.logger.info(f"Running a sampler finished.")
+            
+        X_sampled, y_sampled = X_filtered, y
             
         return X_sampled, y_sampled, X_test, y_test
 
