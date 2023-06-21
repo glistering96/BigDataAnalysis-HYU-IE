@@ -1,6 +1,65 @@
 {
-    "rf": "local variable 'X_sampled' referenced before assignment",
-    "lr": "local variable 'X_sampled' referenced before assignment",
-    "et": "local variable 'X_sampled' referenced before assignment",
-    "xgb": "local variable 'X_sampled' referenced before assignment"
+    "rf": {
+        "cv_avg_scores": {
+            "test_auc": 0.9595680100646016,
+            "test_precision": 0.7585976383357707,
+            "test_recall": 0.9639821029082773,
+            "test_f1": 0.9639821029082773
+        },
+        "params": {
+            "n_estimators": 100,
+            "max_depth": 50,
+            "min_samples_split": 2,
+            "min_samples_leaf": 2,
+            "criterion": "entropy"
+        }
+    },
+    "lr": {
+        "cv_avg_scores": {
+            "test_auc": 0.9091535852966272,
+            "test_precision": 0.5212270975766223,
+            "test_recall": 0.9601789709172259,
+            "test_f1": 0.9601789709172259
+        },
+        "params": {
+            "penalty": "l2",
+            "C": 15.769670348636781,
+            "solver": "newton-cholesky",
+            "max_iter": 100000
+        }
+    },
+    "et": {
+        "cv_avg_scores": {
+            "test_auc": 0.9634673901687301,
+            "test_precision": 0.7808924967774904,
+            "test_recall": 0.9657718120805369,
+            "test_f1": 0.9657718120805369
+        },
+        "params": {
+            "n_estimators": 1000,
+            "max_depth": 50,
+            "min_samples_split": 2,
+            "min_samples_leaf": 2
+        }
+    },
+    "xgb": {
+        "cv_avg_scores": {
+            "test_auc": 0.9059822781173275,
+            "test_precision": 0.5317254325562759,
+            "test_recall": 0.9543624161073826,
+            "test_f1": 0.9543624161073827
+        },
+        "params": {
+            "n_estimators": 100,
+            "learning_rate": 0.3,
+            "max_depth": 50,
+            "min_child_weight": 2,
+            "reg_alpha": 0.001,
+            "reg_lambda": 0.1,
+            "gamma": 0.001,
+            "tree_method": "gpu_hist",
+            "gpu_id": 0,
+            "scale_pos_weight": 0.048471290082028336
+        }
+    }
 }

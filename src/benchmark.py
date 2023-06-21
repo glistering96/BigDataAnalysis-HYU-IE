@@ -441,10 +441,10 @@ class Benchmark:
                     self.logger.info(f'{nm} is in the skip list. Skip final evaluation.')
                     continue
                 
-                if nm in results.keys() and "cv_avg_scores" in results[nm]:
-                    # if the result of the model already exists and the values are not related with errors, skip the final evaluation
-                    self.logger.info(f'{nm} is in the previous results. Skip final evaluation.')
-                    continue
+                # if nm in results.keys() and "cv_avg_scores" in results[nm]:
+                #     # if the result of the model already exists and the values are not related with errors, skip the final evaluation
+                #     self.logger.info(f'{nm} is in the previous results. Skip final evaluation.')
+                #     continue
                 
                 # only run if the model is defined and not in the results
                 self.logger.info(f'Running benchmark on {nm} with params {params}')
